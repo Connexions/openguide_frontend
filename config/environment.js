@@ -3,6 +3,7 @@
 module.exports = function(environment) {
   var ENV = {
     modulePrefix: 'openguide-frontend',
+    podModulePrefix: 'openguide-frontend/pods',
     environment: environment,
     baseURL: '/',
     locationType: 'auto',
@@ -16,15 +17,26 @@ module.exports = function(environment) {
     APP: {
       // Here you can pass flags/options to your application instance
       // when it is created
+    },
+     contentSecurityPolicy: {
+      'default-src': "'none'",
+      'script-src': "'self' 'unsafe-inline' 'unsafe-eval' http://openguide.com:35729",
+      'font-src': "'self' http://fonts.gstatic.com",
+      'connect-src': "'self' http://dev.openguide.com http://openguide.com:35729 ws://openguide.com:35729/",
+      'img-src': "'self'",
+      'style-src': "'self' 'unsafe-inline' http://fonts.googleapis.com",
+      'frame-src': "'none'"
     }
   };
 
   if (environment === 'development') {
-    // ENV.APP.LOG_RESOLVER = true;
-    // ENV.APP.LOG_ACTIVE_GENERATION = true;
-    // ENV.APP.LOG_TRANSITIONS = true;
-    // ENV.APP.LOG_TRANSITIONS_INTERNAL = true;
-    // ENV.APP.LOG_VIEW_LOOKUPS = true;
+    //ENV.APP.LOG_RESOLVER = true;
+    ENV.APP.LOG_ACTIVE_GENERATION = true;
+    ENV.APP.LOG_TRANSITIONS = true;
+    //ENV.APP.LOG_TRANSITIONS_INTERNAL = true;
+    ENV.APP.LOG_VIEW_LOOKUPS = true;
+    ENV.APP.API_HOST = 'http://dev.openguide.com';
+    ENV.APP.API_NAMESPACE = 'v1';
   }
 
   if (environment === 'test') {
@@ -40,7 +52,8 @@ module.exports = function(environment) {
   }
 
   if (environment === 'production') {
-
+    ENV.APP.API_HOST = 'http://dev.openguide.com';
+    ENV.APP.API_NAMESPACE = 'v1';
   }
 
   return ENV;

@@ -1,0 +1,26 @@
+{{outlet}}
+<h1>Books</h1>
+  {{#each book in this}}
+
+  <div class="table-responsive">
+<h3>{{#link-to 'book' book}}{{book.title}}{{/link-to}}<small>Theme: {{#link-to 'theme' book.theme}}{{book.theme.title}}{{/link-to}}</small></h3>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>
+        Elements
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each element in book.elements}}
+    <tr>
+      <td>
+        {{#link-to 'element' element}}{{element.name}}{{/link-to}}
+      </td>
+  </tr>    
+    {{/each}}
+</tbody>    
+</table>
+</div>
+  {{/each}}

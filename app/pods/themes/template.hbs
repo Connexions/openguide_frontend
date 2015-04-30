@@ -1,0 +1,46 @@
+{{outlet}}
+<h1>Themes</h1>
+{{#each theme in this}}
+
+
+<div class="table-responsive">
+  <h3>{{#link-to 'theme' theme}}{{theme.title}}{{/link-to}}</h3>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>
+        Books
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+    
+        {{#each book in theme.books}}
+      <tr>
+      <td>{{#link-to 'book' book}}{{book.title}}{{/link-to}}</td>
+    </tr>
+{{/each}}
+      
+  </tbody>
+  
+  </table>
+</div>
+  <div class="table-responsive">
+<table class="table table-striped elements">
+  <thead>
+  <tr>
+    <th>Elements</th>
+  </tr>
+  </thead>
+  <tbody>
+  {{#each element in theme.elements}}
+    <tr>
+      <td>{{#link-to 'element' element}}{{element.name}}{{/link-to}}</td>
+    </tr>
+{{/each}}
+    </tbody>
+  </table>
+</div>
+  
+{{/each}}
+   

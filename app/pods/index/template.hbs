@@ -1,0 +1,88 @@
+{{outlet}}
+<div class="row">
+<div class="themes">
+
+  <div class="table-responsive">
+    <h3>{{#link-to 'themes'}}Themes{{/link-to}}</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+    {{#each theme in model.themes}}
+      <tr>
+        <td>
+          {{theme.id}}
+        </td>
+      <td>{{#link-to 'theme' theme}}{{theme.title}}         {{/link-to}}
+      </td>
+        <td>Date</td>
+        </tr>
+    {{/each}}
+        
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+<div class="row">
+<div class="books">
+
+    <div class="table-responsive">
+<h3>{{#link-to 'books'}}Books{{/link-to}}</h3>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Title</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+    {{#each book in model.books}}
+      <tr>
+        <td>{{book.id}}</td>
+        <td>
+          {{#link-to 'book' book}}{{book.title}}{{/link-to}}
+        </td>
+        <td>Date</td>
+      </tr>
+    {{/each}}
+    </tbody>
+  </table>
+  </div>
+</div>
+</div>
+<div class="row">
+  <div class="elements">
+    
+      <div class="table-responsive">
+<h3>{{#link-to 'elements'}}Elements{{/link-to}}</h3>
+    <table class="table table-striped">
+      <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+    {{#each element in model.elements}}
+      <tr>
+        <td>{{element.id}}</td>
+        <td>
+          {{#link-to 'element' element}}{{element.name}}{{/link-to}}
+        </td>
+        <td>Date</td>
+      </tr>
+    {{/each}}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>

@@ -6,4 +6,10 @@ var Router = Ember.Router.extend({
 });
 
 export default Router.map(function() {
+  this.resource('books', function() {});
+  this.resource('book', {path: '/books/:book_id'}, function() {});
+  this.resource('themes', function() {});
+  this.resource('theme', {path: '/themes/:theme_id'}, function() {});
+  this.resource('elements', function() {});
+  this.resource('element', {path: '/elements/:element_id'}, function() {});
 });

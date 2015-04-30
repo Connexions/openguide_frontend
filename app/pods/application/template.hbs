@@ -1,0 +1,36 @@
+<div class="container-fluid">
+<div class="row">
+<div class="sidebar">
+    <h1><a class="brand" href="#">OpenGuide</a>
+    <span><a href="http://www.openstax.org/">by OpenStax</a></span></h1>
+    <nav>
+      <ul>
+        <li>
+          {{#link-to 'themes'}}Themes{{/link-to}}
+        </li>
+        <li>
+        {{#link-to 'books'}}Books{{/link-to}}
+        </li>
+        <li>
+          {{#link-to 'elements'}}Elements{{/link-to}}
+        </li>
+      </ul>
+    </nav>
+  </div>
+  <section class="main">
+    <div class="meta">
+      <div id="breadcrumbs">
+      {{#link-to 'index'}}Home{{/link-to}}
+      </div>
+      <div id="search">
+        {{input type="text" value=search action="query" placeholder="search"}}
+      </div>
+    </div>
+    <div class="body">
+    <div class="content">
+  {{outlet}}
+    </div>
+    </div>
+  </section>
+</div>
+</div>

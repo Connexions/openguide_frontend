@@ -1,0 +1,8 @@
+{{outlet}}
+<h1>{{model.title}}</h1>
+<p>Theme: {{#link-to 'theme' model.theme}}{{model.theme.title}}{{/link-to}}</p>
+<ul class="elements">
+    {{#each element in model.elements}}
+  <li>{{#link-to 'element' element}}{{element.name}}{{/link-to}}</li>
+    {{/each}}
+</ul>
