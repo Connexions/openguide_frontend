@@ -1,7 +1,7 @@
 {{outlet}}
 <div class="row">
 <div class="themes">
-
+<h1>OpenGuide</h1>
   <div class="table-responsive">
     <h3>{{#link-to 'themes'}}Themes{{/link-to}}</h3>
   <table class="table table-striped">
@@ -78,7 +78,7 @@
         <td>
           {{#link-to 'element' element}}{{element.name}}{{/link-to}}
         </td>
-        <td>Date</td>
+        <td>{{element.mod_date}}</td>
       </tr>
     {{/each}}
       </tbody>

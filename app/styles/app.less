@@ -41,7 +41,8 @@ html {
 
     a {
       color:#fff;
-      &:hover {
+      &:hover,
+      &:focus {
         text-decoration:none;
         color:#fff;
 
@@ -62,6 +63,7 @@ html {
     margin-top:40px;
     margin-left:-15px;
     margin-right:-15px;
+    font-family: @font-family-heading;
     
     ul {
       list-style:none;
@@ -74,6 +76,7 @@ html {
           display:block;
           font-size:14px;
           padding:7px 35px;
+          color: lighten(@bg-sidebar, 30%);
 
           &:hover {
             text-decoration: none;
@@ -159,58 +162,20 @@ html {
       text-align:center;
       margin-bottom:2em;
       font-weight:100;
+      padding-bottom:20px;
+      border-bottom:1px solid #ddd;
     }
-    
-//    table.list {
-//      width:100%;
-//      box-sizing: border-box;
-//      background-color:@bg-table;
-//      thead tr {
-//       background-color:lighten(#000, 70%);
-//        th {
-//          padding:5px 10px;
-//          color:#000;
-//        }
-//      }
-//      
-//      thead:first-child tr {
-//        background-color: @bg-table-head;
-//        th,
-//        th a,
-//        span {
-//          color:lighten(@bg-table-head, 40%);
-//        }
-//        span {
-//          float:right;
-//        }
-//      }
-//      
-//      tbody tr {
-//        td {
-//        padding:5px 10px;
-//          //a {color:#777;}
-//        }
-//        &:nth-child(even) {
-//          background-color:lighten(#000, 90%);
-//
-//        }
-//      }
-//    }
-    
+        
     .themes {
       .make-md-column(12);
-      //.make-md-column-offset(1);
-      
     }
     
     .books {
       .make-md-column(12);
-      //.make-md-column-offset(1);
     }
     
     .elements {
       .make-md-column(12);
-      //.make-md-column-offset(1);
     }
     
     .table-responsive {
@@ -240,10 +205,27 @@ html {
       }
       
     }
-    h3 small {
-      //margin-left:10px;
-//      line-height:26px;
-//      float:right;
+   
+    //theme template styling
+    .box {
+      .make-md-column(12);
+      
+      h3.title {
+        .make-md-column(12);
+        background-color:@bg-table-head;
+        padding:5px 10px;
+        color:lighten(@bg-table-head, 40%);
+        a {
+          color:lighten(@bg-table-head, 40%);
+          &:hover {
+          text-decoration:none;
+            color:#fff;
+          }
+        }
+      }
+      .thumb {
+        .make-md-column(4);
+      }
     }
       
   }
