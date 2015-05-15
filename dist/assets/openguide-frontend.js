@@ -4703,7 +4703,7 @@ catch(err) {
 if (runningTests) {
   require("openguide-frontend/tests/test-helper");
 } else {
-  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://dev.openguide.com","API_NAMESPACE":"v1","name":"openguide-frontend","version":"0.0.0.eaa876f1","API_ADD_TRAILING_SLASHES":true});
+  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.cnx.org","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.e5482386","API_ADD_TRAILING_SLASHES":true});
 }
 
 /* jshint ignore:end */
