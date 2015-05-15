@@ -1399,8 +1399,8 @@ define('openguide-frontend/pods/element/template', ['exports'], function (export
             var element1 = dom.childAt(element0, [0]);
             var attrMorph0 = dom.createAttrMorph(element0, 'href');
             var attrMorph1 = dom.createAttrMorph(element1, 'src');
-            attribute(env, attrMorph0, element0, "href", concat(env, ["/", get(env, context, "attribute.image")]));
-            attribute(env, attrMorph1, element1, "src", concat(env, ["/", get(env, context, "attribute.thumb")]));
+            attribute(env, attrMorph0, element0, "href", concat(env, [get(env, context, "attribute.image")]));
+            attribute(env, attrMorph1, element1, "src", concat(env, [get(env, context, "attribute.thumb")]));
             return fragment;
           }
         };
@@ -4703,7 +4703,7 @@ catch(err) {
 if (runningTests) {
   require("openguide-frontend/tests/test-helper");
 } else {
-  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.cnx.org","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.34ce8e05","API_ADD_TRAILING_SLASHES":true});
+  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.cnx.org","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.df4940b3","API_ADD_TRAILING_SLASHES":true});
 }
 
 /* jshint ignore:end */
