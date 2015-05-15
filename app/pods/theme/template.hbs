@@ -21,7 +21,7 @@
       <div class="thumb"> 
         {{#unless attribute.text}}
         <h4>{{attribute.label}}</h4>
-        <a href="http://dev.openguide.com/{{attribute.image}}" target="_blank"><img src="http://dev.openguide.com/{{attribute.thumb}}" alt=""/></a>
+        <a href="{{attribute.image}}" target="_blank"><img src="{{attribute.thumb}}" alt=""/></a>
         {{/unless}}
       </div>
       {{/each}}
