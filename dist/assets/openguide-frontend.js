@@ -590,8 +590,8 @@ define('openguide-frontend/pods/book/template', ['exports'], function (exports) 
               var attrMorph0 = dom.createAttrMorph(element1, 'href');
               var attrMorph1 = dom.createAttrMorph(element2, 'src');
               content(env, morph0, context, "attribute.label");
-              attribute(env, attrMorph0, element1, "href", concat(env, ["http://dev.openguide.com/", get(env, context, "attribute.image")]));
-              attribute(env, attrMorph1, element2, "src", concat(env, ["http://dev.openguide.com/", get(env, context, "attribute.thumb")]));
+              attribute(env, attrMorph0, element1, "href", concat(env, [get(env, context, "attribute.image")]));
+              attribute(env, attrMorph1, element2, "src", concat(env, [get(env, context, "attribute.thumb")]));
               return fragment;
             }
           };
@@ -3022,8 +3022,8 @@ define('openguide-frontend/pods/theme/template', ['exports'], function (exports)
               var attrMorph0 = dom.createAttrMorph(element1, 'href');
               var attrMorph1 = dom.createAttrMorph(element2, 'src');
               content(env, morph0, context, "attribute.label");
-              attribute(env, attrMorph0, element1, "href", concat(env, ["http://dev.openguide.com/", get(env, context, "attribute.image")]));
-              attribute(env, attrMorph1, element2, "src", concat(env, ["http://dev.openguide.com/", get(env, context, "attribute.thumb")]));
+              attribute(env, attrMorph0, element1, "href", concat(env, [get(env, context, "attribute.image")]));
+              attribute(env, attrMorph1, element2, "src", concat(env, [get(env, context, "attribute.thumb")]));
               return fragment;
             }
           };
@@ -4703,7 +4703,7 @@ catch(err) {
 if (runningTests) {
   require("openguide-frontend/tests/test-helper");
 } else {
-  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.cnx.org","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.df4940b3","API_ADD_TRAILING_SLASHES":true});
+  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.cnx.org","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.c37cb2d5","API_ADD_TRAILING_SLASHES":true});
 }
 
 /* jshint ignore:end */
