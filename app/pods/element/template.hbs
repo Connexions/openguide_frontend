@@ -1,3 +1,15 @@
 {{outlet}}
-{{model.name}}
+<h1>{{model.name}} <small>/ {{model.bookPart}}</small></h1>
 {{model.books.title}}
+{{#each attribute in model.elementAttributes}}
+<p><strong>{{attribute.label}}: </strong>
+
+{{#if attribute.text}}
+  {{attribute.text}}
+{{else}}
+  <a href="http://dev.openguide.com/{{attribute.image}}" target="_blank"><img src="http://dev.openguide.com/{{attribute.thumb}}" /></a>
+{{/if}}
+</p>
+<hr />
+
+{{/each}}

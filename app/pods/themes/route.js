@@ -3,7 +3,17 @@ import Ember from 'ember';
 
 export default Ember.Route.extend({
   model: function() {
-    return this.store.find('theme');
+    var result = this.store.findAll('theme', {
+      page: 1
+    });
+    
+    var meta = this.store.metadataFor('theme');
+    
+    if (meta.next) {
+      this.store.find('theme', {page: meta.next})
+    }
+    
+    return result;
   }
   
 });

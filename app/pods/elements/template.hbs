@@ -5,15 +5,17 @@
   <thead>
     <tr>
       <th>Name</th>
+      <th>Part of Book</th>
       <th>Theme</th>
       <th>Book</th>
     </tr>
   </thead>
   <tbody>
-{{#each element in this}}
+{{#each element in sortedList}}
     <tr>
       <td>
 {{#link-to 'element' element}}{{element.name}}{{/link-to}}</td>
+      <td>{{element.bookPart}}</td>
 <td>{{#link-to 'theme' theme}}{{element.theme.title}}{{/link-to}}
         </td>
       <td>
