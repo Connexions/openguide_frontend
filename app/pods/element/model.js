@@ -6,5 +6,6 @@ export default DS.Model.extend({
   books: DS.hasMany('book', {async: true}),
   pub_date: DS.attr('date'),
   mod_date: DS.attr('date'),
+  bookPart: DS.attr('string'),
   elementAttributes: DS.hasMany('elementAttribute', {async: true}),
 });

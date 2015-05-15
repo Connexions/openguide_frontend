@@ -9,6 +9,7 @@
       <tr>
         <th>ID</th>
         <th>Title</th>
+        <th>Books</th>
         <th>Date</th>
       </tr>
     </thead>
@@ -21,7 +22,14 @@
         </td>
       <td>{{#link-to 'theme' theme}}{{theme.title}}         {{/link-to}}
       </td>
-        <td>Date</td>
+        <td>
+          {{#each book in theme.books}}
+          <ul>
+            <li>{{#link-to 'book' book}}{{book.title}}{{/link-to}}</li>
+          </ul>
+          {{/each}}
+        </td>
+        <td>{{moment theme.mod_date}}</td>
         </tr>
     {{/each}}
         
@@ -40,6 +48,7 @@
       <tr>
         <th>ID</th>
         <th>Title</th>
+        <th>Theme</th>
         <th>Date</th>
       </tr>
     </thead>
@@ -50,7 +59,10 @@
         <td>
           {{#link-to 'book' book}}{{book.title}}{{/link-to}}
         </td>
-        <td>Date</td>
+        <td>
+          {{#link-to 'theme' theme}}{{book.theme.title}}{{/link-to}}
+        </td>
+        <td>{{moment book.mod_date}}</td>
       </tr>
     {{/each}}
     </tbody>
@@ -68,6 +80,7 @@
       <tr>
         <th>ID</th>
         <th>Name</th>
+        <th>Part of Book</th>
         <th>Date</th>
       </tr>
     </thead>
@@ -78,7 +91,8 @@
         <td>
           {{#link-to 'element' element}}{{element.name}}{{/link-to}}
         </td>
-        <td>{{element.mod_date}}</td>
+        <td>{{element.bookPart}}</td>
+        <td>{{moment element.mod_date}}</td>
       </tr>
     {{/each}}
       </tbody>
