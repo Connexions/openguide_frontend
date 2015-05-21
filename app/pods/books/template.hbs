@@ -1,6 +1,6 @@
 {{outlet}}
 <h1>Books</h1>
-  {{#each book in this}}
+  {{#each book in model}}
 
   <div class="table-responsive">
 <h3>{{#link-to 'book' book}}{{book.title}}{{/link-to}}<small>Theme: {{#link-to 'theme' book.theme}}{{book.theme.title}}{{/link-to}}</small></h3>
