@@ -1,5 +1,30 @@
 {{outlet}}
-<h1>Elements</h1>
+
+
+<div class="container main">
+<div class="row">
+  <div class="col-lg-6 title">
+  <h1>Elements</h1>
+  </div>
+</div>
+<div class="row">
+{{#each sortedList as |element|}}
+  <div class="col-lg-4">
+    <div class="box">
+  <h2>{{#link-to 'element' element}}{{element.name}}{{/link-to}}</h2>
+  </div>
+  </div>
+  {{else}}
+  <div class="col-lg-12">
+    <p>Sorry, nothing here...</p>
+  </div>
+{{/each}}
+</div>
+
+
+
+<div class="row">
+
   <div class="table-responsive">
 <table class="table table-striped">
   <thead>
@@ -26,3 +51,5 @@
   </tbody>
   </table>
 </div>
+  </div>
+  </div>

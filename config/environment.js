@@ -36,7 +36,7 @@ module.exports = function(environment) {
     //ENV.APP.LOG_TRANSITIONS_INTERNAL = true;
     ENV.APP.LOG_VIEW_LOOKUPS = true;
     ENV.APP.API_HOST = 'http://dev.openguide.com';
-    ENV.APP.API_NAMESPACE = 'v1';
+    ENV.APP.API_NAMESPACE = 'data/v1';
   }
 
   if (environment === 'test') {

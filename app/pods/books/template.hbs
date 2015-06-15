@@ -1,5 +1,24 @@
 {{outlet}}
-<h1>Books</h1>
+<div class="container main">
+<div class="row">
+  <div class="col-lg-6 title">
+  <h1>Books</h1>
+  </div>
+</div>
+<div class="row">
+{{#each model as |book|}}
+  <div class="col-lg-4">
+    <div class="box">
+  <h2>{{#link-to 'book' book}}{{book.title}}{{/link-to}}</h2>
+  </div>
+  </div>
+  {{else}}
+  <div class="col-lg-12">
+    <p>Sorry, nothing here...</p>
+  </div>
+{{/each}}
+</div>
+</div><!--
   {{#each book in model}}
 
   <div class="table-responsive">
@@ -23,4 +42,4 @@
 </tbody>    
 </table>
 </div>
-  {{/each}}
+  {{/each}}-->
