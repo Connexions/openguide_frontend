@@ -1,15 +1,32 @@
 {{outlet}}
-<h1>{{model.name}} <small>/ {{model.bookPart}}</small></h1>
-{{model.books.title}}
-{{#each attribute in model.elementAttributes}}
-<p><strong>{{attribute.label}}: </strong>
-
-{{#if attribute.text}}
-  {{attribute.text}}
-{{else}}
-  <a href="{{attribute.image}}" target="_blank"><img src="{{attribute.thumb}}" /></a>
-{{/if}}
-</p>
-<hr />
-
+<div class="container main">
+<div class="row">
+  <div class="col-lg-12 title">
+  <h1>{{model.name}}
+    <small>in {{model.bookPart}}</small></h1>
+  </div>
+</div>
+  
+<div class="row">
+  
+{{#each model.elementAttributes as |attribute| }}
+   {{#if attribute.image}}
+  <div class="col-lg-6 screenshot">
+   
+  <img src="http://openguide.cnx.org{{attribute.image}}" />
+    
+  </div>
+   {{/if}}
 {{/each}}
+  {{#each model.elementAttributes as |attribute| }}
+  {{#if attribute.text}}
+<div class="col-lg-6">
+    
+    <p><strong>{{attribute.label}}: </strong>
+  {{attribute.text}}</p>
+      
+  </div>
+  {{/if}}
+  {{/each}}
+  </div>
+</div>

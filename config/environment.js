@@ -22,7 +22,7 @@ module.exports = function(environment) {
       'default-src': "'none'",
       'script-src': "'self' 'unsafe-inline' 'unsafe-eval' http://openguide.com:35729",
       'font-src': "'self' http://fonts.gstatic.com",
-      'connect-src': "'self' http://dev.openguide.com http://openguide.com:35729 ws://openguide.com:35729/",
+      'connect-src': "'self' http://dev.openguide.com http://openguide.com:35729 http://openguide.cnx.org ws://openguide.com:35729/",
       'img-src': "'self'",
       'style-src': "'self' 'unsafe-inline' http://fonts.googleapis.com",
       'frame-src': "'none'"
@@ -35,7 +35,7 @@ module.exports = function(environment) {
     ENV.APP.LOG_TRANSITIONS = true;
     //ENV.APP.LOG_TRANSITIONS_INTERNAL = true;
     ENV.APP.LOG_VIEW_LOOKUPS = true;
-    ENV.APP.API_HOST = 'http://openguide.cnx.org';
+    ENV.APP.API_HOST = 'http://dev.openguide.com';
     ENV.APP.API_NAMESPACE = 'data/v1';
   }
 
