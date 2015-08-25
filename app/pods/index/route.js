@@ -12,12 +12,12 @@ model: function() {
 //    elements: this.store.findAll('element', {
 //      page: 1
 //    })
-//  });  
-//  
+//  });
+//
 //  var themeMeta = this.store.metadataFor('theme');
 //  var bookMeta = this.store.metadataFor('book');
 //  var elementMeta = this.store.metadataFor('element');
-//  
+//
 //  if (themeMeta.next) {
 //      store.find('theme', {page: themeMeta.next})
 //    } else if (bookMeta.next) {
@@ -25,7 +25,7 @@ model: function() {
 //    } else if (elementMeta.next) {
 //      store.find('element', {page: elementMeta.next})
 //    }
-//  
+//
 //  return result;
   }
 });

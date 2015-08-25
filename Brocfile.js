@@ -11,6 +11,7 @@ var app = new EmberApp({
 });
 
 app.import(app.bowerDirectory + '/bootstrap/dist/js/bootstrap.js');
+app.import(app.bowerDirectory + '/torii/dist/torii.amd.js');
 
 // Use `app.import` to add additional libraries to the generated
 // output files.

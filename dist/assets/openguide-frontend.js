@@ -159,6 +159,58 @@ define('openguide-frontend/initializers/export-application-global', ['exports', 
   };
 
 });
+define('openguide-frontend/initializers/initialize-torii-callback', ['exports', 'torii/redirect-handler'], function (exports, RedirectHandler) {
+
+  'use strict';
+
+  exports['default'] = {
+    name: 'torii-callback',
+    before: 'torii',
+    initialize: function initialize(container, app) {
+      app.deferReadiness();
+      RedirectHandler['default'].handle(window)['catch'](function () {
+        app.advanceReadiness();
+      });
+    }
+  };
+
+});
+define('openguide-frontend/initializers/initialize-torii-session', ['exports', 'torii/configuration', 'torii/bootstrap/session'], function (exports, configuration, bootstrapSession) {
+
+  'use strict';
+
+  exports['default'] = {
+    name: 'torii-session',
+    after: 'torii',
+
+    initialize: function initialize(container) {
+      if (configuration['default'].sessionServiceName) {
+        bootstrapSession['default'](container, configuration['default'].sessionServiceName);
+        container.injection('adapter', configuration['default'].sessionServiceName, 'torii:session');
+      }
+    }
+  };
+
+});
+define('openguide-frontend/initializers/initialize-torii', ['exports', 'torii/bootstrap/torii', 'torii/configuration'], function (exports, bootstrapTorii, configuration) {
+
+  'use strict';
+
+  var initializer = {
+    name: 'torii',
+    initialize: function initialize(container, app) {
+      bootstrapTorii['default'](container);
+      app.inject('route', 'torii', 'torii:main');
+    }
+  };
+
+  if (window.DS) {
+    initializer.after = 'store';
+  }
+
+  exports['default'] = initializer;
+
+});
 define('openguide-frontend/models/github-organization', ['exports', 'ember-data-github/models/github-organization'], function (exports, githubOrganization) {
 
 	'use strict';
@@ -186,11 +238,32 @@ define('openguide-frontend/pods/application/controller', ['exports', 'ember'], f
 
   exports['default'] = Ember['default'].Controller.extend({
     search: '',
+    hasGithub: false,
     actions: {
       query: function query() {
         //the current value of the field
         var query = this.get('search');
         this.transitionToRoute('search', { query: query });
+      }
+    }
+  });
+
+});
+define('openguide-frontend/pods/application/route', ['exports', 'ember'], function (exports, Ember) {
+
+  'use strict';
+
+  exports['default'] = Ember['default'].Route.extend({
+    actions: {
+      signInViaGithub: function signInViaGithub() {
+        var route = this;
+
+        this.get('session').open('github-oauth2').then(function () {
+          route.controller.set('hasGithub', true);
+          alert('success!');
+        }, function (error) {
+          route.controller.set('error', 'Could not sign you in: ' + error.message);
+        });
       }
     }
   });
@@ -309,6 +382,177 @@ define('openguide-frontend/pods/application/template', ['exports'], function (ex
         }
       };
     }());
+    var child3 = (function() {
+      return {
+        isHTMLBars: true,
+        revision: "Ember@1.12.0",
+        blockParams: 0,
+        cachedFragment: null,
+        hasRendered: false,
+        build: function build(dom) {
+          var el0 = dom.createDocumentFragment();
+          var el1 = dom.createTextNode("\n  One sec while we get you signed in...\n");
+          dom.appendChild(el0, el1);
+          return el0;
+        },
+        render: function render(context, env, contextualElement) {
+          var dom = env.dom;
+          dom.detectNamespace(contextualElement);
+          var fragment;
+          if (env.useFragmentCache && dom.canClone) {
+            if (this.cachedFragment === null) {
+              fragment = this.build(dom);
+              if (this.hasRendered) {
+                this.cachedFragment = fragment;
+              } else {
+                this.hasRendered = true;
+              }
+            }
+            if (this.cachedFragment) {
+              fragment = dom.cloneNode(this.cachedFragment, true);
+            }
+          } else {
+            fragment = this.build(dom);
+          }
+          return fragment;
+        }
+      };
+    }());
+    var child4 = (function() {
+      var child0 = (function() {
+        return {
+          isHTMLBars: true,
+          revision: "Ember@1.12.0",
+          blockParams: 0,
+          cachedFragment: null,
+          hasRendered: false,
+          build: function build(dom) {
+            var el0 = dom.createDocumentFragment();
+            var el1 = dom.createTextNode("  ");
+            dom.appendChild(el0, el1);
+            var el1 = dom.createElement("p");
+            var el2 = dom.createTextNode("logout");
+            dom.appendChild(el1, el2);
+            dom.appendChild(el0, el1);
+            var el1 = dom.createTextNode("\n");
+            dom.appendChild(el0, el1);
+            return el0;
+          },
+          render: function render(context, env, contextualElement) {
+            var dom = env.dom;
+            dom.detectNamespace(contextualElement);
+            var fragment;
+            if (env.useFragmentCache && dom.canClone) {
+              if (this.cachedFragment === null) {
+                fragment = this.build(dom);
+                if (this.hasRendered) {
+                  this.cachedFragment = fragment;
+                } else {
+                  this.hasRendered = true;
+                }
+              }
+              if (this.cachedFragment) {
+                fragment = dom.cloneNode(this.cachedFragment, true);
+              }
+            } else {
+              fragment = this.build(dom);
+            }
+            return fragment;
+          }
+        };
+      }());
+      var child1 = (function() {
+        return {
+          isHTMLBars: true,
+          revision: "Ember@1.12.0",
+          blockParams: 0,
+          cachedFragment: null,
+          hasRendered: false,
+          build: function build(dom) {
+            var el0 = dom.createDocumentFragment();
+            var el1 = dom.createTextNode("  ");
+            dom.appendChild(el0, el1);
+            var el1 = dom.createElement("button");
+            var el2 = dom.createTextNode("\n    Sign In\n  ");
+            dom.appendChild(el1, el2);
+            dom.appendChild(el0, el1);
+            var el1 = dom.createTextNode("\n");
+            dom.appendChild(el0, el1);
+            return el0;
+          },
+          render: function render(context, env, contextualElement) {
+            var dom = env.dom;
+            var hooks = env.hooks, element = hooks.element;
+            dom.detectNamespace(contextualElement);
+            var fragment;
+            if (env.useFragmentCache && dom.canClone) {
+              if (this.cachedFragment === null) {
+                fragment = this.build(dom);
+                if (this.hasRendered) {
+                  this.cachedFragment = fragment;
+                } else {
+                  this.hasRendered = true;
+                }
+              }
+              if (this.cachedFragment) {
+                fragment = dom.cloneNode(this.cachedFragment, true);
+              }
+            } else {
+              fragment = this.build(dom);
+            }
+            var element0 = dom.childAt(fragment, [1]);
+            element(env, element0, context, "action", ["signInViaGithub"], {});
+            return fragment;
+          }
+        };
+      }());
+      return {
+        isHTMLBars: true,
+        revision: "Ember@1.12.0",
+        blockParams: 0,
+        cachedFragment: null,
+        hasRendered: false,
+        build: function build(dom) {
+          var el0 = dom.createDocumentFragment();
+          var el1 = dom.createTextNode("  ");
+          dom.appendChild(el0, el1);
+          var el1 = dom.createComment("");
+          dom.appendChild(el0, el1);
+          var el1 = dom.createTextNode("\n");
+          dom.appendChild(el0, el1);
+          var el1 = dom.createComment("");
+          dom.appendChild(el0, el1);
+          return el0;
+        },
+        render: function render(context, env, contextualElement) {
+          var dom = env.dom;
+          var hooks = env.hooks, content = hooks.content, get = hooks.get, block = hooks.block;
+          dom.detectNamespace(contextualElement);
+          var fragment;
+          if (env.useFragmentCache && dom.canClone) {
+            if (this.cachedFragment === null) {
+              fragment = this.build(dom);
+              if (this.hasRendered) {
+                this.cachedFragment = fragment;
+              } else {
+                this.hasRendered = true;
+              }
+            }
+            if (this.cachedFragment) {
+              fragment = dom.cloneNode(this.cachedFragment, true);
+            }
+          } else {
+            fragment = this.build(dom);
+          }
+          var morph0 = dom.createMorphAt(fragment,1,1,contextualElement);
+          var morph1 = dom.createMorphAt(fragment,3,3,contextualElement);
+          dom.insertBoundary(fragment, null);
+          content(env, morph0, context, "error");
+          block(env, morph1, context, "if", [get(env, context, "hasGithub")], {}, child0, child1);
+          return fragment;
+        }
+      };
+    }());
     return {
       isHTMLBars: true,
       revision: "Ember@1.12.0",
@@ -407,6 +651,12 @@ define('openguide-frontend/pods/application/template', ['exports'], function (ex
         var el6 = dom.createComment("");
         dom.appendChild(el5, el6);
         dom.appendChild(el4, el5);
+        var el5 = dom.createTextNode("\n            ");
+        dom.appendChild(el4, el5);
+        var el5 = dom.createElement("li");
+        var el6 = dom.createComment("");
+        dom.appendChild(el5, el6);
+        dom.appendChild(el4, el5);
         var el5 = dom.createTextNode("\n\n");
         dom.appendChild(el4, el5);
         var el5 = dom.createComment("\n            <li class=\"dropdown\">\n              <a href=\"#\" class=\"dropdown-toggle\" data-toggle=\"dropdown\" role=\"button\" aria-expanded=\"false\">Dropdown <span class=\"caret\"></span></a>\n              <ul class=\"dropdown-menu\" role=\"menu\">\n{{#each model as |theme|}}\n                <li>{{#link-to 'theme' theme}}{{theme.title}}{{/link-to}}</li>\n                {{/each}}                <li><a href=\"#\">Another action</a></li>\n                <li><a href=\"#\">Something else here</a></li>\n                <li class=\"divider\"></li>\n                <li class=\"dropdown-header\">Nav header</li>\n                <li><a href=\"#\">Separated link</a></li>\n                <li><a href=\"#\">One more separated link</a></li>\n              </ul>\n            </li>\n");
@@ -425,7 +675,7 @@ define('openguide-frontend/pods/application/template', ['exports'], function (ex
         var el2 = dom.createTextNode("\n    ");
         dom.appendChild(el1, el2);
         dom.appendChild(el0, el1);
-        var el1 = dom.createTextNode("\n      \n      ");
+        var el1 = dom.createTextNode("\n\n      ");
         dom.appendChild(el0, el1);
         var el1 = dom.createComment("");
         dom.appendChild(el0, el1);
@@ -450,11 +700,13 @@ define('openguide-frontend/pods/application/template', ['exports'], function (ex
         var el2 = dom.createTextNode("\n    ");
         dom.appendChild(el1, el2);
         dom.appendChild(el0, el1);
+        var el1 = dom.createTextNode("\n");
+        dom.appendChild(el0, el1);
         return el0;
       },
       render: function render(context, env, contextualElement) {
         var dom = env.dom;
-        var hooks = env.hooks, block = hooks.block, content = hooks.content;
+        var hooks = env.hooks, block = hooks.block, get = hooks.get, content = hooks.content;
         dom.detectNamespace(contextualElement);
         var fragment;
         if (env.useFragmentCache && dom.canClone) {
@@ -472,15 +724,17 @@ define('openguide-frontend/pods/application/template', ['exports'], function (ex
         } else {
           fragment = this.build(dom);
         }
-        var element0 = dom.childAt(fragment, [2, 1, 3, 1]);
-        var morph0 = dom.createMorphAt(dom.childAt(element0, [3]),0,0);
-        var morph1 = dom.createMorphAt(dom.childAt(element0, [5]),0,0);
-        var morph2 = dom.createMorphAt(dom.childAt(element0, [7]),0,0);
-        var morph3 = dom.createMorphAt(fragment,4,4,contextualElement);
+        var element1 = dom.childAt(fragment, [2, 1, 3, 1]);
+        var morph0 = dom.createMorphAt(dom.childAt(element1, [3]),0,0);
+        var morph1 = dom.createMorphAt(dom.childAt(element1, [5]),0,0);
+        var morph2 = dom.createMorphAt(dom.childAt(element1, [7]),0,0);
+        var morph3 = dom.createMorphAt(dom.childAt(element1, [9]),0,0);
+        var morph4 = dom.createMorphAt(fragment,4,4,contextualElement);
         block(env, morph0, context, "link-to", ["themes"], {}, child0, null);
         block(env, morph1, context, "link-to", ["books"], {}, child1, null);
         block(env, morph2, context, "link-to", ["elements"], {}, child2, null);
-        content(env, morph3, context, "outlet");
+        block(env, morph3, context, "if", [get(env, context, "session.isWorking")], {}, child3, child4);
+        content(env, morph4, context, "outlet");
         return fragment;
       }
     };
@@ -1020,7 +1274,8 @@ define('openguide-frontend/pods/element-attribute/model', ['exports', 'ember-dat
     label: DS['default'].attr('string'),
     text: DS['default'].attr('string'),
     image: DS['default'].attr('string'),
-    thumb: DS['default'].attr('string') });
+    thumb: DS['default'].attr('string')
+  });
 
 });
 define('openguide-frontend/pods/element/model', ['exports', 'ember-data'], function (exports, DS) {
@@ -1034,7 +1289,8 @@ define('openguide-frontend/pods/element/model', ['exports', 'ember-data'], funct
     pub_date: DS['default'].attr('date'),
     mod_date: DS['default'].attr('date'),
     bookPart: DS['default'].attr('string'),
-    elementAttributes: DS['default'].hasMany('elementAttribute', { async: true }) });
+    elementAttributes: DS['default'].hasMany('elementAttribute', { async: true })
+  });
 
 });
 define('openguide-frontend/pods/element/route', ['exports', 'ember'], function (exports, Ember) {
@@ -1358,7 +1614,8 @@ define('openguide-frontend/pods/elements/controller', ['exports', 'ember'], func
         sortAscending: true,
         content: this.get('model')
       });
-    }).property('model') });
+    }).property('model')
+  });
 
 });
 define('openguide-frontend/pods/elements/route', ['exports', 'ember'], function (exports, Ember) {
@@ -1920,12 +2177,12 @@ define('openguide-frontend/pods/index/route', ['exports', 'ember'], function (ex
   //    elements: this.store.findAll('element', {
   //      page: 1
   //    })
-  //  }); 
-  // 
+  //  });
+  //
   //  var themeMeta = this.store.metadataFor('theme');
   //  var bookMeta = this.store.metadataFor('book');
   //  var elementMeta = this.store.metadataFor('element');
-  // 
+  //
   //  if (themeMeta.next) {
   //      store.find('theme', {page: themeMeta.next})
   //    } else if (bookMeta.next) {
@@ -1933,7 +2190,7 @@ define('openguide-frontend/pods/index/route', ['exports', 'ember'], function (ex
   //    } else if (elementMeta.next) {
   //      store.find('element', {page: elementMeta.next})
   //    }
-  // 
+  //
   //  return result;
 
 });
@@ -2995,7 +3252,8 @@ define('openguide-frontend/serializers/element', ['exports', 'openguide-frontend
     attrs: {
       theme: { embedded: 'always' },
       books: { embedded: 'always' },
-      elementAttributes: { embedded: 'always' } }
+      elementAttributes: { embedded: 'always' }
+    }
   });
 
   //export default
@@ -3049,60 +3307,6 @@ define('openguide-frontend/serializers/theme', ['exports', 'openguide-frontend/s
       elements: { embedded: 'always' }
     }
   });
-
-});
-define('openguide-frontend/templates/application', ['exports'], function (exports) {
-
-  'use strict';
-
-  exports['default'] = Ember.HTMLBars.template((function() {
-    return {
-      isHTMLBars: true,
-      revision: "Ember@1.12.0",
-      blockParams: 0,
-      cachedFragment: null,
-      hasRendered: false,
-      build: function build(dom) {
-        var el0 = dom.createDocumentFragment();
-        var el1 = dom.createElement("h2");
-        dom.setAttribute(el1,"id","title");
-        var el2 = dom.createTextNode("Welcome to Ember.js");
-        dom.appendChild(el1, el2);
-        dom.appendChild(el0, el1);
-        var el1 = dom.createTextNode("\n\n");
-        dom.appendChild(el0, el1);
-        var el1 = dom.createComment("");
-        dom.appendChild(el0, el1);
-        var el1 = dom.createTextNode("\n");
-        dom.appendChild(el0, el1);
-        return el0;
-      },
-      render: function render(context, env, contextualElement) {
-        var dom = env.dom;
-        var hooks = env.hooks, content = hooks.content;
-        dom.detectNamespace(contextualElement);
-        var fragment;
-        if (env.useFragmentCache && dom.canClone) {
-          if (this.cachedFragment === null) {
-            fragment = this.build(dom);
-            if (this.hasRendered) {
-              this.cachedFragment = fragment;
-            } else {
-              this.hasRendered = true;
-            }
-          }
-          if (this.cachedFragment) {
-            fragment = dom.cloneNode(this.cachedFragment, true);
-          }
-        } else {
-          fragment = this.build(dom);
-        }
-        var morph0 = dom.createMorphAt(fragment,2,2,contextualElement);
-        content(env, morph0, context, "outlet");
-        return fragment;
-      }
-    };
-  }()));
 
 });
 define('openguide-frontend/tests/adapters/application.jshint', function () {
@@ -3189,6 +3393,16 @@ define('openguide-frontend/tests/pods/application/controller.jshint', function (
   module('JSHint - pods/application');
   test('pods/application/controller.js should pass jshint', function() { 
     ok(true, 'pods/application/controller.js should pass jshint.'); 
+  });
+
+});
+define('openguide-frontend/tests/pods/application/route.jshint', function () {
+
+  'use strict';
+
+  module('JSHint - pods/application');
+  test('pods/application/route.js should pass jshint', function() { 
+    ok(true, 'pods/application/route.js should pass jshint.'); 
   });
 
 });
@@ -3379,6 +3593,16 @@ define('openguide-frontend/tests/test-helper.jshint', function () {
   });
 
 });
+define('openguide-frontend/tests/torii-adapters/application.jshint', function () {
+
+  'use strict';
+
+  module('JSHint - torii-adapters');
+  test('torii-adapters/application.js should pass jshint', function() { 
+    ok(false, 'torii-adapters/application.js should pass jshint.\ntorii-adapters/application.js: line 2, col 8, \'config\' is defined but never used.\n\n1 error'); 
+  });
+
+});
 define('openguide-frontend/tests/unit/models/book-test', ['ember-qunit'], function (ember_qunit) {
 
   'use strict';
@@ -3480,6 +3704,31 @@ define('openguide-frontend/tests/unit/pods/application/controller-test.jshint', 
   module('JSHint - unit/pods/application');
   test('unit/pods/application/controller-test.js should pass jshint', function() { 
     ok(true, 'unit/pods/application/controller-test.js should pass jshint.'); 
+  });
+
+});
+define('openguide-frontend/tests/unit/pods/application/route-test', ['ember-qunit'], function (ember_qunit) {
+
+  'use strict';
+
+  ember_qunit.moduleFor('route:application', 'Unit | Route | application', {});
+
+  ember_qunit.test('it exists', function (assert) {
+    var route = this.subject();
+    assert.ok(route);
+  });
+
+  // Specify the other units that are required for this test.
+  // needs: ['controller:foo']
+
+});
+define('openguide-frontend/tests/unit/pods/application/route-test.jshint', function () {
+
+  'use strict';
+
+  module('JSHint - unit/pods/application');
+  test('unit/pods/application/route-test.js should pass jshint', function() { 
+    ok(true, 'unit/pods/application/route-test.js should pass jshint.'); 
   });
 
 });
@@ -3889,6 +4138,34 @@ define('openguide-frontend/tests/unit/routes/theme-test.jshint', function () {
   });
 
 });
+define('openguide-frontend/torii-adapters/application', ['exports', 'ember', 'openguide-frontend/config/environment'], function (exports, Ember, config) {
+
+  'use strict';
+
+  exports['default'] = Ember['default'].Object.extend({
+    open: function open(authentication) {
+      var authorizationCode = authentication.authorizationCode;
+      return new Ember['default'].RSVP.Promise(function (resolve, reject) {
+        Ember['default'].$.ajax({
+          url: 'http://openguide.dev/data/v1/users',
+          data: { 'github-auth-code': authorizationCode },
+          dataType: 'json',
+          success: Ember['default'].run.bind(null, resolve),
+          error: Ember['default'].run.bind(null, reject)
+        });
+      }).then(function (user) {
+        // The returned object is merged onto the session (basically). Here
+        // you may also want to persist the new session with cookies or via
+        // localStorage.
+        console.log(user);
+        return {
+          currentUser: user
+        };
+      });
+    }
+  });
+
+});
 /* jshint ignore:start */
 
 /* jshint ignore:end */
@@ -3917,7 +4194,7 @@ catch(err) {
 if (runningTests) {
   require("openguide-frontend/tests/test-helper");
 } else {
-  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://dev.openguide.com","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.3b5ef640","API_ADD_TRAILING_SLASHES":true});
+  require("openguide-frontend/app")["default"].create({"LOG_ACTIVE_GENERATION":true,"LOG_TRANSITIONS":true,"LOG_VIEW_LOOKUPS":true,"API_HOST":"http://openguide.dev","API_NAMESPACE":"data/v1","name":"openguide-frontend","version":"0.0.0.5a522c8a","API_ADD_TRAILING_SLASHES":true});
 }
 
 /* jshint ignore:end */

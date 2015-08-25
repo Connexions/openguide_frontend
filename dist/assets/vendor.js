@@ -58487,12 +58487,13 @@ define("ember/resolver",
     };
   }
 
-  if (!(Object.create && !Object.create(null).hasOwnProperty)) {
+  var create = (Object.create || Ember.create);
+  if (!(create && !create(null).hasOwnProperty)) {
     throw new Error("This browser does not support Object.create(null), please polyfil with es5-sham: http://git.io/yBU2rg");
   }
 
   function makeDictionary() {
-    var cache = Object.create(null);
+    var cache = create(null);
     cache['_dict'] = null;
     delete cache['_dict'];
     return cache;
@@ -58539,7 +58540,7 @@ define("ember/resolver",
 
   function resolveOther(parsedName) {
     /*jshint validthis:true */
-    
+
     // Temporarily disabling podModulePrefix deprecation
     /*
     if (!this._deprecatedPodModulePrefix) {
@@ -58558,23 +58559,22 @@ define("ember/resolver",
     var normalizedModuleName = this.findModuleName(parsedName);
 
     if (normalizedModuleName) {
-      var module = require(normalizedModuleName, null, null, true /* force sync */);
+      var defaultExport = this._extractDefaultExport(normalizedModuleName, parsedName);
 
-      if (module && module['default']) { module = module['default']; }
-
-      if (module === undefined) {
+      if (defaultExport === undefined) {
         throw new Error(" Expected to find: '" + parsedName.fullName + "' within '" + normalizedModuleName + "' but got 'undefined'. Did you forget to `export default` within '" + normalizedModuleName + "'?");
       }
 
-      if (this.shouldWrapInClassFactory(module, parsedName)) {
-        module = classFactory(module);
+      if (this.shouldWrapInClassFactory(defaultExport, parsedName)) {
+        defaultExport = classFactory(defaultExport);
       }
 
-      return module;
+      return defaultExport;
     } else {
       return this._super(parsedName);
     }
   }
+
   // Ember.DefaultResolver docs:
   //   https://github.com/emberjs/ember.js/blob/master/packages/ember-application/lib/system/resolver.js
   var Resolver = Ember.DefaultResolver.extend({
@@ -58780,6 +58780,50 @@ define("ember/resolver",
       }
 
       Ember.Logger.info(symbol, parsedName.fullName, padding, description);
+    },
+
+    knownForType: function(type) {
+      var moduleEntries = requirejs.entries;
+      var moduleKeys = (Object.keys || Ember.keys)(moduleEntries);
+
+      var items = makeDictionary();
+      for (var index = 0, length = moduleKeys.length; index < length; index++) {
+        var moduleName = moduleKeys[index];
+        var fullname = this.translateToContainerFullname(type, moduleName);
+
+        if (fullname) {
+          items[fullname] = true;
+        }
+      }
+
+      return items;
+    },
+
+    translateToContainerFullname: function(type, moduleName) {
+      var prefix = this.prefix({ type: type });
+      var pluralizedType = this.pluralize(type);
+      var nonPodRegExp = new RegExp('^' + prefix + '/' + pluralizedType + '/(.+)$');
+      var podRegExp = new RegExp('^' + prefix + '/(.+)/' + type + '$');
+      var matches;
+
+
+      if ((matches = moduleName.match(podRegExp))) {
+        return type + ':' + matches[1];
+      }
+
+      if ((matches = moduleName.match(nonPodRegExp))) {
+        return type + ':' + matches[1];
+      }
+    },
+
+    _extractDefaultExport: function(normalizedModuleName) {
+      var module = require(normalizedModuleName, null, null, true /* force sync */);
+
+      if (module && module['default']) {
+        module = module['default'];
+      }
+
+      return module;
     }
   });
 
@@ -75640,9 +75684,9 @@ define("ember/load-initializers",
 })();
 
 ;/*!
- * Bootstrap v3.3.4 (http://getbootstrap.com)
+ * Bootstrap v3.3.5 (http://getbootstrap.com)
  * Copyright 2011-2015 Twitter, Inc.
- * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
+ * Licensed under the MIT license
  */
 
 if (typeof jQuery === 'undefined') {
@@ -75658,7 +75702,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: transition.js v3.3.4
+ * Bootstrap: transition.js v3.3.5
  * http://getbootstrap.com/javascript/#transitions
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -75718,7 +75762,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: alert.js v3.3.4
+ * Bootstrap: alert.js v3.3.5
  * http://getbootstrap.com/javascript/#alerts
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -75737,7 +75781,7 @@ if (typeof jQuery === 'undefined') {
     $(el).on('click', dismiss, this.close)
   }
 
-  Alert.VERSION = '3.3.4'
+  Alert.VERSION = '3.3.5'
 
   Alert.TRANSITION_DURATION = 150
 
@@ -75813,7 +75857,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: button.js v3.3.4
+ * Bootstrap: button.js v3.3.5
  * http://getbootstrap.com/javascript/#buttons
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -75833,7 +75877,7 @@ if (typeof jQuery === 'undefined') {
     this.isLoading = false
   }
 
-  Button.VERSION  = '3.3.4'
+  Button.VERSION  = '3.3.5'
 
   Button.DEFAULTS = {
     loadingText: 'loading...'
@@ -75845,7 +75889,7 @@ if (typeof jQuery === 'undefined') {
     var val  = $el.is('input') ? 'val' : 'html'
     var data = $el.data()
 
-    state = state + 'Text'
+    state += 'Text'
 
     if (data.resetText == null) $el.data('resetText', $el[val]())
 
@@ -75870,15 +75914,19 @@ if (typeof jQuery === 'undefined') {
     if ($parent.length) {
       var $input = this.$element.find('input')
       if ($input.prop('type') == 'radio') {
-        if ($input.prop('checked') && this.$element.hasClass('active')) changed = false
-        else $parent.find('.active').removeClass('active')
+        if ($input.prop('checked')) changed = false
+        $parent.find('.active').removeClass('active')
+        this.$element.addClass('active')
+      } else if ($input.prop('type') == 'checkbox') {
+        if (($input.prop('checked')) !== this.$element.hasClass('active')) changed = false
+        this.$element.toggleClass('active')
       }
-      if (changed) $input.prop('checked', !this.$element.hasClass('active')).trigger('change')
+      $input.prop('checked', this.$element.hasClass('active'))
+      if (changed) $input.trigger('change')
     } else {
       this.$element.attr('aria-pressed', !this.$element.hasClass('active'))
+      this.$element.toggleClass('active')
     }
-
-    if (changed) this.$element.toggleClass('active')
   }
 
 
@@ -75921,7 +75969,7 @@ if (typeof jQuery === 'undefined') {
       var $btn = $(e.target)
       if (!$btn.hasClass('btn')) $btn = $btn.closest('.btn')
       Plugin.call($btn, 'toggle')
-      e.preventDefault()
+      if (!($(e.target).is('input[type="radio"]') || $(e.target).is('input[type="checkbox"]'))) e.preventDefault()
     })
     .on('focus.bs.button.data-api blur.bs.button.data-api', '[data-toggle^="button"]', function (e) {
       $(e.target).closest('.btn').toggleClass('focus', /^focus(in)?$/.test(e.type))
@@ -75930,7 +75978,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: carousel.js v3.3.4
+ * Bootstrap: carousel.js v3.3.5
  * http://getbootstrap.com/javascript/#carousel
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -75961,7 +76009,7 @@ if (typeof jQuery === 'undefined') {
       .on('mouseleave.bs.carousel', $.proxy(this.cycle, this))
   }
 
-  Carousel.VERSION  = '3.3.4'
+  Carousel.VERSION  = '3.3.5'
 
   Carousel.TRANSITION_DURATION = 600
 
@@ -76168,7 +76216,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: collapse.js v3.3.4
+ * Bootstrap: collapse.js v3.3.5
  * http://getbootstrap.com/javascript/#collapse
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -76198,7 +76246,7 @@ if (typeof jQuery === 'undefined') {
     if (this.options.toggle) this.toggle()
   }
 
-  Collapse.VERSION  = '3.3.4'
+  Collapse.VERSION  = '3.3.5'
 
   Collapse.TRANSITION_DURATION = 350
 
@@ -76380,7 +76428,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: dropdown.js v3.3.4
+ * Bootstrap: dropdown.js v3.3.5
  * http://getbootstrap.com/javascript/#dropdowns
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -76400,7 +76448,41 @@ if (typeof jQuery === 'undefined') {
     $(element).on('click.bs.dropdown', this.toggle)
   }
 
-  Dropdown.VERSION = '3.3.4'
+  Dropdown.VERSION = '3.3.5'
+
+  function getParent($this) {
+    var selector = $this.attr('data-target')
+
+    if (!selector) {
+      selector = $this.attr('href')
+      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
+    }
+
+    var $parent = selector && $(selector)
+
+    return $parent && $parent.length ? $parent : $this.parent()
+  }
+
+  function clearMenus(e) {
+    if (e && e.which === 3) return
+    $(backdrop).remove()
+    $(toggle).each(function () {
+      var $this         = $(this)
+      var $parent       = getParent($this)
+      var relatedTarget = { relatedTarget: this }
+
+      if (!$parent.hasClass('open')) return
+
+      if (e && e.type == 'click' && /input|textarea/i.test(e.target.tagName) && $.contains($parent[0], e.target)) return
+
+      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
+
+      if (e.isDefaultPrevented()) return
+
+      $this.attr('aria-expanded', 'false')
+      $parent.removeClass('open').trigger('hidden.bs.dropdown', relatedTarget)
+    })
+  }
 
   Dropdown.prototype.toggle = function (e) {
     var $this = $(this)
@@ -76415,7 +76497,10 @@ if (typeof jQuery === 'undefined') {
     if (!isActive) {
       if ('ontouchstart' in document.documentElement && !$parent.closest('.navbar-nav').length) {
         // if mobile we use a backdrop because click events don't delegate
-        $('<div class="dropdown-backdrop"/>').insertAfter($(this)).on('click', clearMenus)
+        $(document.createElement('div'))
+          .addClass('dropdown-backdrop')
+          .insertAfter($(this))
+          .on('click', clearMenus)
       }
 
       var relatedTarget = { relatedTarget: this }
@@ -76448,55 +76533,23 @@ if (typeof jQuery === 'undefined') {
     var $parent  = getParent($this)
     var isActive = $parent.hasClass('open')
 
-    if ((!isActive && e.which != 27) || (isActive && e.which == 27)) {
+    if (!isActive && e.which != 27 || isActive && e.which == 27) {
       if (e.which == 27) $parent.find(toggle).trigger('focus')
       return $this.trigger('click')
     }
 
     var desc = ' li:not(.disabled):visible a'
-    var $items = $parent.find('[role="menu"]' + desc + ', [role="listbox"]' + desc)
+    var $items = $parent.find('.dropdown-menu' + desc)
 
     if (!$items.length) return
 
     var index = $items.index(e.target)
 
-    if (e.which == 38 && index > 0)                 index--                        // up
-    if (e.which == 40 && index < $items.length - 1) index++                        // down
-    if (!~index)                                      index = 0
+    if (e.which == 38 && index > 0)                 index--         // up
+    if (e.which == 40 && index < $items.length - 1) index++         // down
+    if (!~index)                                    index = 0
 
     $items.eq(index).trigger('focus')
-  }
-
-  function clearMenus(e) {
-    if (e && e.which === 3) return
-    $(backdrop).remove()
-    $(toggle).each(function () {
-      var $this         = $(this)
-      var $parent       = getParent($this)
-      var relatedTarget = { relatedTarget: this }
-
-      if (!$parent.hasClass('open')) return
-
-      $parent.trigger(e = $.Event('hide.bs.dropdown', relatedTarget))
-
-      if (e.isDefaultPrevented()) return
-
-      $this.attr('aria-expanded', 'false')
-      $parent.removeClass('open').trigger('hidden.bs.dropdown', relatedTarget)
-    })
-  }
-
-  function getParent($this) {
-    var selector = $this.attr('data-target')
-
-    if (!selector) {
-      selector = $this.attr('href')
-      selector = selector && /#[A-Za-z]/.test(selector) && selector.replace(/.*(?=#[^\s]*$)/, '') // strip for ie7
-    }
-
-    var $parent = selector && $(selector)
-
-    return $parent && $parent.length ? $parent : $this.parent()
   }
 
 
@@ -76536,13 +76589,12 @@ if (typeof jQuery === 'undefined') {
     .on('click.bs.dropdown.data-api', '.dropdown form', function (e) { e.stopPropagation() })
     .on('click.bs.dropdown.data-api', toggle, Dropdown.prototype.toggle)
     .on('keydown.bs.dropdown.data-api', toggle, Dropdown.prototype.keydown)
-    .on('keydown.bs.dropdown.data-api', '[role="menu"]', Dropdown.prototype.keydown)
-    .on('keydown.bs.dropdown.data-api', '[role="listbox"]', Dropdown.prototype.keydown)
+    .on('keydown.bs.dropdown.data-api', '.dropdown-menu', Dropdown.prototype.keydown)
 
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: modal.js v3.3.4
+ * Bootstrap: modal.js v3.3.5
  * http://getbootstrap.com/javascript/#modals
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -76576,7 +76628,7 @@ if (typeof jQuery === 'undefined') {
     }
   }
 
-  Modal.VERSION  = '3.3.4'
+  Modal.VERSION  = '3.3.5'
 
   Modal.TRANSITION_DURATION = 300
   Modal.BACKDROP_TRANSITION_DURATION = 150
@@ -76633,9 +76685,7 @@ if (typeof jQuery === 'undefined') {
         that.$element[0].offsetWidth // force reflow
       }
 
-      that.$element
-        .addClass('in')
-        .attr('aria-hidden', false)
+      that.$element.addClass('in')
 
       that.enforceFocus()
 
@@ -76669,7 +76719,6 @@ if (typeof jQuery === 'undefined') {
 
     this.$element
       .removeClass('in')
-      .attr('aria-hidden', true)
       .off('click.dismiss.bs.modal')
       .off('mouseup.dismiss.bs.modal')
 
@@ -76733,7 +76782,8 @@ if (typeof jQuery === 'undefined') {
     if (this.isShown && this.options.backdrop) {
       var doAnimate = $.support.transition && animate
 
-      this.$backdrop = $('<div class="modal-backdrop ' + animate + '" />')
+      this.$backdrop = $(document.createElement('div'))
+        .addClass('modal-backdrop ' + animate)
         .appendTo(this.$body)
 
       this.$element.on('click.dismiss.bs.modal', $.proxy(function (e) {
@@ -76882,7 +76932,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: tooltip.js v3.3.4
+ * Bootstrap: tooltip.js v3.3.5
  * http://getbootstrap.com/javascript/#tooltip
  * Inspired by the original jQuery.tipsy by Jason Frame
  * ========================================================================
@@ -76904,11 +76954,12 @@ if (typeof jQuery === 'undefined') {
     this.timeout    = null
     this.hoverState = null
     this.$element   = null
+    this.inState    = null
 
     this.init('tooltip', element, options)
   }
 
-  Tooltip.VERSION  = '3.3.4'
+  Tooltip.VERSION  = '3.3.5'
 
   Tooltip.TRANSITION_DURATION = 150
 
@@ -76933,7 +76984,8 @@ if (typeof jQuery === 'undefined') {
     this.type      = type
     this.$element  = $(element)
     this.options   = this.getOptions(options)
-    this.$viewport = this.options.viewport && $(this.options.viewport.selector || this.options.viewport)
+    this.$viewport = this.options.viewport && $($.isFunction(this.options.viewport) ? this.options.viewport.call(this, this.$element) : (this.options.viewport.selector || this.options.viewport))
+    this.inState   = { click: false, hover: false, focus: false }
 
     if (this.$element[0] instanceof document.constructor && !this.options.selector) {
       throw new Error('`selector` option must be specified when initializing ' + this.type + ' on the window.document object!')
@@ -76992,14 +77044,18 @@ if (typeof jQuery === 'undefined') {
     var self = obj instanceof this.constructor ?
       obj : $(obj.currentTarget).data('bs.' + this.type)
 
-    if (self && self.$tip && self.$tip.is(':visible')) {
-      self.hoverState = 'in'
-      return
-    }
-
     if (!self) {
       self = new this.constructor(obj.currentTarget, this.getDelegateOptions())
       $(obj.currentTarget).data('bs.' + this.type, self)
+    }
+
+    if (obj instanceof $.Event) {
+      self.inState[obj.type == 'focusin' ? 'focus' : 'hover'] = true
+    }
+
+    if (self.tip().hasClass('in') || self.hoverState == 'in') {
+      self.hoverState = 'in'
+      return
     }
 
     clearTimeout(self.timeout)
@@ -77013,6 +77069,14 @@ if (typeof jQuery === 'undefined') {
     }, self.options.delay.show)
   }
 
+  Tooltip.prototype.isInStateTrue = function () {
+    for (var key in this.inState) {
+      if (this.inState[key]) return true
+    }
+
+    return false
+  }
+
   Tooltip.prototype.leave = function (obj) {
     var self = obj instanceof this.constructor ?
       obj : $(obj.currentTarget).data('bs.' + this.type)
@@ -77021,6 +77085,12 @@ if (typeof jQuery === 'undefined') {
       self = new this.constructor(obj.currentTarget, this.getDelegateOptions())
       $(obj.currentTarget).data('bs.' + this.type, self)
     }
+
+    if (obj instanceof $.Event) {
+      self.inState[obj.type == 'focusout' ? 'focus' : 'hover'] = false
+    }
+
+    if (self.isInStateTrue()) return
 
     clearTimeout(self.timeout)
 
@@ -77068,6 +77138,7 @@ if (typeof jQuery === 'undefined') {
         .data('bs.' + this.type, this)
 
       this.options.container ? $tip.appendTo(this.options.container) : $tip.insertAfter(this.$element)
+      this.$element.trigger('inserted.bs.' + this.type)
 
       var pos          = this.getPosition()
       var actualWidth  = $tip[0].offsetWidth
@@ -77075,13 +77146,12 @@ if (typeof jQuery === 'undefined') {
 
       if (autoPlace) {
         var orgPlacement = placement
-        var $container   = this.options.container ? $(this.options.container) : this.$element.parent()
-        var containerDim = this.getPosition($container)
+        var viewportDim = this.getPosition(this.$viewport)
 
-        placement = placement == 'bottom' && pos.bottom + actualHeight > containerDim.bottom ? 'top'    :
-                    placement == 'top'    && pos.top    - actualHeight < containerDim.top    ? 'bottom' :
-                    placement == 'right'  && pos.right  + actualWidth  > containerDim.width  ? 'left'   :
-                    placement == 'left'   && pos.left   - actualWidth  < containerDim.left   ? 'right'  :
+        placement = placement == 'bottom' && pos.bottom + actualHeight > viewportDim.bottom ? 'top'    :
+                    placement == 'top'    && pos.top    - actualHeight < viewportDim.top    ? 'bottom' :
+                    placement == 'right'  && pos.right  + actualWidth  > viewportDim.width  ? 'left'   :
+                    placement == 'left'   && pos.left   - actualWidth  < viewportDim.left   ? 'right'  :
                     placement
 
         $tip
@@ -77122,8 +77192,8 @@ if (typeof jQuery === 'undefined') {
     if (isNaN(marginTop))  marginTop  = 0
     if (isNaN(marginLeft)) marginLeft = 0
 
-    offset.top  = offset.top  + marginTop
-    offset.left = offset.left + marginLeft
+    offset.top  += marginTop
+    offset.left += marginLeft
 
     // $.fn.offset doesn't round pixel values
     // so we use setOffset directly with our own function B-0
@@ -77205,7 +77275,7 @@ if (typeof jQuery === 'undefined') {
 
   Tooltip.prototype.fixTitle = function () {
     var $e = this.$element
-    if ($e.attr('title') || typeof ($e.attr('data-original-title')) != 'string') {
+    if ($e.attr('title') || typeof $e.attr('data-original-title') != 'string') {
       $e.attr('data-original-title', $e.attr('title') || '').attr('title', '')
     }
   }
@@ -77260,7 +77330,7 @@ if (typeof jQuery === 'undefined') {
       var rightEdgeOffset = pos.left + viewportPadding + actualWidth
       if (leftEdgeOffset < viewportDimensions.left) { // left overflow
         delta.left = viewportDimensions.left - leftEdgeOffset
-      } else if (rightEdgeOffset > viewportDimensions.width) { // right overflow
+      } else if (rightEdgeOffset > viewportDimensions.right) { // right overflow
         delta.left = viewportDimensions.left + viewportDimensions.width - rightEdgeOffset
       }
     }
@@ -77286,7 +77356,13 @@ if (typeof jQuery === 'undefined') {
   }
 
   Tooltip.prototype.tip = function () {
-    return (this.$tip = this.$tip || $(this.options.template))
+    if (!this.$tip) {
+      this.$tip = $(this.options.template)
+      if (this.$tip.length != 1) {
+        throw new Error(this.type + ' `template` option must consist of exactly 1 top-level element!')
+      }
+    }
+    return this.$tip
   }
 
   Tooltip.prototype.arrow = function () {
@@ -77315,7 +77391,13 @@ if (typeof jQuery === 'undefined') {
       }
     }
 
-    self.tip().hasClass('in') ? self.leave(self) : self.enter(self)
+    if (e) {
+      self.inState.click = !self.inState.click
+      if (self.isInStateTrue()) self.enter(self)
+      else self.leave(self)
+    } else {
+      self.tip().hasClass('in') ? self.leave(self) : self.enter(self)
+    }
   }
 
   Tooltip.prototype.destroy = function () {
@@ -77323,6 +77405,12 @@ if (typeof jQuery === 'undefined') {
     clearTimeout(this.timeout)
     this.hide(function () {
       that.$element.off('.' + that.type).removeData('bs.' + that.type)
+      if (that.$tip) {
+        that.$tip.detach()
+      }
+      that.$tip = null
+      that.$arrow = null
+      that.$viewport = null
     })
   }
 
@@ -77359,7 +77447,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: popover.js v3.3.4
+ * Bootstrap: popover.js v3.3.5
  * http://getbootstrap.com/javascript/#popovers
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -77379,7 +77467,7 @@ if (typeof jQuery === 'undefined') {
 
   if (!$.fn.tooltip) throw new Error('Popover requires tooltip.js')
 
-  Popover.VERSION  = '3.3.4'
+  Popover.VERSION  = '3.3.5'
 
   Popover.DEFAULTS = $.extend({}, $.fn.tooltip.Constructor.DEFAULTS, {
     placement: 'right',
@@ -77468,7 +77556,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: scrollspy.js v3.3.4
+ * Bootstrap: scrollspy.js v3.3.5
  * http://getbootstrap.com/javascript/#scrollspy
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -77497,7 +77585,7 @@ if (typeof jQuery === 'undefined') {
     this.process()
   }
 
-  ScrollSpy.VERSION  = '3.3.4'
+  ScrollSpy.VERSION  = '3.3.5'
 
   ScrollSpy.DEFAULTS = {
     offset: 10
@@ -77641,7 +77729,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: tab.js v3.3.4
+ * Bootstrap: tab.js v3.3.5
  * http://getbootstrap.com/javascript/#tabs
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -77656,10 +77744,12 @@ if (typeof jQuery === 'undefined') {
   // ====================
 
   var Tab = function (element) {
+    // jscs:disable requireDollarBeforejQueryAssignment
     this.element = $(element)
+    // jscs:enable requireDollarBeforejQueryAssignment
   }
 
-  Tab.VERSION = '3.3.4'
+  Tab.VERSION = '3.3.5'
 
   Tab.TRANSITION_DURATION = 150
 
@@ -77707,7 +77797,7 @@ if (typeof jQuery === 'undefined') {
     var $active    = container.find('> .active')
     var transition = callback
       && $.support.transition
-      && (($active.length && $active.hasClass('fade')) || !!container.find('> .fade').length)
+      && ($active.length && $active.hasClass('fade') || !!container.find('> .fade').length)
 
     function next() {
       $active
@@ -77795,7 +77885,7 @@ if (typeof jQuery === 'undefined') {
 }(jQuery);
 
 /* ========================================================================
- * Bootstrap: affix.js v3.3.4
+ * Bootstrap: affix.js v3.3.5
  * http://getbootstrap.com/javascript/#affix
  * ========================================================================
  * Copyright 2011-2015 Twitter, Inc.
@@ -77824,7 +77914,7 @@ if (typeof jQuery === 'undefined') {
     this.checkPosition()
   }
 
-  Affix.VERSION  = '3.3.4'
+  Affix.VERSION  = '3.3.5'
 
   Affix.RESET    = 'affix affix-top affix-bottom'
 
@@ -77874,7 +77964,7 @@ if (typeof jQuery === 'undefined') {
     var offset       = this.options.offset
     var offsetTop    = offset.top
     var offsetBottom = offset.bottom
-    var scrollHeight = $(document.body).height()
+    var scrollHeight = Math.max($(document).height(), $(document.body).height())
 
     if (typeof offset != 'object')         offsetBottom = offsetTop = offset
     if (typeof offsetTop == 'function')    offsetTop    = offset.top(this.$element)
@@ -77957,6 +78047,1858 @@ if (typeof jQuery === 'undefined') {
 
 }(jQuery);
 
+;/**
+ * Torii version: 0.5.0
+ * Built: Thu Jul 02 2015 11:33:04 GMT-0400 (EDT)
+ */
+define("torii/adapters/application", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var ApplicationAdapter = Ember.Object.extend({
+
+      open: function(){
+        return new Ember.RSVP.Promise(function(){
+          throw new Error(
+            'The Torii adapter must implement `open` for a session to be opened');
+        });
+      },
+
+      fetch: function(){
+        return new Ember.RSVP.Promise(function(){
+          throw new Error(
+            'The Torii adapter must implement `fetch` for a session to be fetched');
+        });
+      },
+
+      close: function(){
+        return new Ember.RSVP.Promise(function(){
+          throw new Error(
+            'The Torii adapter must implement `close` for a session to be closed');
+        });
+      }
+
+    });
+
+    __exports__["default"] = ApplicationAdapter;
+  });
+define("torii/bootstrap/session", 
+  ["torii/session","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var Session = __dependency1__["default"];
+
+    __exports__["default"] = function(container, sessionName){
+      container.register('torii:session', Session);
+      container.injection('torii:session', 'torii', 'torii:main');
+      container.injection('route',      sessionName, 'torii:session');
+      container.injection('controller', sessionName, 'torii:session');
+
+      return container;
+    }
+  });
+define("torii/bootstrap/torii", 
+  ["torii/torii","torii/providers/linked-in-oauth2","torii/providers/google-oauth2","torii/providers/google-oauth2-bearer","torii/providers/facebook-connect","torii/providers/facebook-oauth2","torii/adapters/application","torii/providers/twitter-oauth1","torii/providers/github-oauth2","torii/providers/azure-ad-oauth2","torii/providers/stripe-connect","torii/providers/edmodo-connect","torii/services/popup","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __dependency7__, __dependency8__, __dependency9__, __dependency10__, __dependency11__, __dependency12__, __dependency13__, __exports__) {
+    "use strict";
+    var Torii = __dependency1__["default"];
+    var LinkedInOauth2Provider = __dependency2__["default"];
+    var GoogleOauth2Provider = __dependency3__["default"];
+    var GoogleOauth2BearerProvider = __dependency4__["default"];
+    var FacebookConnectProvider = __dependency5__["default"];
+    var FacebookOauth2Provider = __dependency6__["default"];
+    var ApplicationAdapter = __dependency7__["default"];
+    var TwitterProvider = __dependency8__["default"];
+    var GithubOauth2Provider = __dependency9__["default"];
+    var AzureAdOauth2Provider = __dependency10__["default"];
+    var StripeConnectProvider = __dependency11__["default"];
+    var EdmodoConnectProvider = __dependency12__["default"];
+
+    var PopupService = __dependency13__["default"];
+
+    __exports__["default"] = function(container){
+      container.register('torii:main', Torii);
+      container.register('torii-provider:linked-in-oauth2', LinkedInOauth2Provider);
+      container.register('torii-provider:google-oauth2', GoogleOauth2Provider);
+      container.register('torii-provider:google-oauth2-bearer', GoogleOauth2BearerProvider);
+      container.register('torii-provider:facebook-connect', FacebookConnectProvider);
+      container.register('torii-provider:facebook-oauth2', FacebookOauth2Provider);
+      container.register('torii-provider:twitter', TwitterProvider);
+      container.register('torii-provider:github-oauth2', GithubOauth2Provider);
+      container.register('torii-provider:azure-ad-oauth2', AzureAdOauth2Provider);
+      container.register('torii-provider:stripe-connect', StripeConnectProvider);
+      container.register('torii-provider:edmodo-connect', EdmodoConnectProvider);
+      container.register('torii-adapter:application', ApplicationAdapter);
+
+      container.register('torii-service:popup', PopupService);
+
+      container.injection('torii-provider', 'popup', 'torii-service:popup');
+
+      if (window.DS) {
+        var storeFactoryName = 'store:main';
+        if (container.has('service:store')) {
+          storeFactoryName = 'service:store';
+        }
+        container.injection('torii-provider', 'store', storeFactoryName);
+        container.injection('torii-adapter', 'store', storeFactoryName);
+      }
+
+      return container;
+    }
+  });
+define("torii/configuration", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var get = Ember.get;
+
+    var configuration       = get(window, 'ENV.torii') || {};
+    configuration.providers = configuration.providers || {};
+
+    function configurable(configKey, defaultValue){
+      return Ember.computed(function(){
+        var namespace = this.get('configNamespace'),
+            fullKey   = namespace ? [namespace, configKey].join('.') : configKey,
+            value     = get(configuration, fullKey);
+        if (typeof value === 'undefined') {
+          if (typeof defaultValue !== 'undefined') {
+            if (typeof defaultValue === 'function') {
+              return defaultValue.call(this);
+            } else {
+              return defaultValue;
+            }
+          } else {
+            throw new Error("Expected configuration value "+fullKey+" to be defined!");
+          }
+        }
+        return value;
+      });
+    }
+
+    __exports__.configurable = configurable;
+
+    __exports__["default"] = configuration;
+  });
+define("torii/initializers/initialize-torii-callback", 
+  ["torii/redirect-handler","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var RedirectHandler = __dependency1__["default"];
+
+    __exports__["default"] = {
+      name: 'torii-callback',
+      before: 'torii',
+      initialize: function(container, app){
+        app.deferReadiness();
+        RedirectHandler.handle(window)["catch"](function(){
+          app.advanceReadiness();
+        });
+      }
+    };
+  });
+define("torii/initializers/initialize-torii-session", 
+  ["torii/configuration","torii/bootstrap/session","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var configuration = __dependency1__["default"];
+    var bootstrapSession = __dependency2__["default"];
+
+    __exports__["default"] = {
+      name: 'torii-session',
+      after: 'torii',
+
+      initialize: function(container){
+        if (configuration.sessionServiceName) {
+          bootstrapSession(container, configuration.sessionServiceName);
+          container.injection('adapter', configuration.sessionServiceName, 'torii:session');
+        }
+      }
+    };
+  });
+define("torii/initializers/initialize-torii", 
+  ["torii/bootstrap/torii","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var bootstrapTorii = __dependency1__["default"];
+    var configuration = __dependency2__["default"];
+
+    var initializer = {
+      name: 'torii',
+      initialize: function(container, app){
+        bootstrapTorii(container);
+        app.inject('route', 'torii', 'torii:main');
+      }
+    };
+
+    if (window.DS) {
+      initializer.after = 'store';
+    }
+
+    __exports__["default"] = initializer;
+  });
+define("torii/instance-initializers/walk-providers", 
+  ["torii/configuration","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var configuration = __dependency1__["default"];
+
+    __exports__["default"] = {
+      name: 'torii-walk-providers',
+      initialize: function(appInstance){
+        // Walk all configured providers and eagerly instantiate
+        // them. This gives providers with initialization side effects
+        // like facebook-connect a chance to load up assets.
+        for (var key in  configuration.providers) {
+          if (configuration.providers.hasOwnProperty(key)) {
+            appInstance.container.lookup('torii-provider:'+key);
+          }
+        }
+
+      }
+    };
+  });
+define("torii/lib/load-initializer", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    /* global Ember */
+    __exports__["default"] = function(initializer){
+      Ember.onLoad('Ember.Application', function(Application){
+        Application.initializer(initializer);
+      });
+    }
+  });
+define("torii/lib/load-instance-initializer", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    /* global Ember */
+    __exports__["default"] = function(instanceInitializer){
+      Ember.onLoad('Ember.Application', function(Application){
+        Application.instanceInitializer(instanceInitializer);
+      });
+    }
+  });
+define("torii/lib/parse-query-string", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    __exports__["default"] = Ember.Object.extend({
+      init: function(url, validKeys) {
+        this.url = url;
+        this.validKeys = validKeys;
+      },
+
+      parse: function(){
+        var url       = this.url,
+            validKeys = this.validKeys,
+            data      = {};
+
+        for (var i = 0; i < validKeys.length; i++) {
+          var key = validKeys[i],
+              regex = new RegExp(key + "=([^&#]*)"),
+              match = regex.exec(url);
+          if (match) {
+            data[key] = match[1];
+          }
+        }
+        return data;
+      }
+    });
+  });
+define("torii/lib/popup-id-serializer", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var PopupIdSerializer = {
+      serialize: function(popupId){
+        return "torii-popup:" + popupId;
+      },
+
+      deserialize: function(serializedPopupId){
+        if (!serializedPopupId){
+          return null;
+        }
+
+        var match = serializedPopupId.match(/^(torii-popup:)(.*)/);
+        return match ? match[2] : null;
+      },
+    };
+
+
+    __exports__["default"] = PopupIdSerializer;
+  });
+define("torii/lib/query-string", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var camelize = Ember.String.camelize,
+        get      = Ember.get;
+
+    function isValue(value){
+      return (value || value === false);
+    }
+
+    function getParamValue(obj, paramName, optional){
+      var camelizedName = camelize(paramName),
+          value         = get(obj, camelizedName);
+
+      if (!optional) {
+        if ( !isValue(value) && isValue(get(obj, paramName))) {
+          throw new Error(
+            'Use camelized versions of url params. (Did not find ' +
+            '"' + camelizedName + '" property but did find ' +
+            '"' + paramName + '".');
+        }
+
+        if (!isValue(value)) {
+          throw new Error(
+            'Missing url param: "'+paramName+'". (Looked for: property named "' +
+            camelizedName + '".'
+          );
+        }
+      }
+
+      return isValue(value) ? encodeURIComponent(value) : undefined;
+    }
+
+    function getOptionalParamValue(obj, paramName){
+      return getParamValue(obj, paramName, true);
+    }
+
+    __exports__["default"] = Ember.Object.extend({
+      init: function(obj, urlParams, optionalUrlParams){
+        this.obj               = obj;
+        this.urlParams         = Ember.A(urlParams).uniq();
+        this.optionalUrlParams = Ember.A(optionalUrlParams || []).uniq();
+
+        this.optionalUrlParams.forEach(function(param){
+          if (this.urlParams.indexOf(param) > -1) {
+            throw new Error("Required parameters cannot also be optional: '" + param + "'");
+          }
+        }, this);
+      },
+
+      toString: function(){
+        var urlParams         = this.urlParams,
+            optionalUrlParams = this.optionalUrlParams,
+            obj               = this.obj,
+            keyValuePairs     = Ember.A([]);
+
+        urlParams.forEach(function(paramName){
+          var paramValue = getParamValue(obj, paramName);
+
+          keyValuePairs.push( [paramName, paramValue] );
+        });
+
+        optionalUrlParams.forEach(function(paramName){
+          var paramValue = getOptionalParamValue(obj, paramName);
+
+          if (isValue(paramValue)) {
+            keyValuePairs.push( [paramName, paramValue] );
+          }
+        });
+
+        return keyValuePairs.map(function(pair){
+          return pair.join('=');
+        }).join('&');
+      }
+    });
+  });
+define("torii/lib/required-property", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    function requiredProperty(){
+      return Ember.computed(function(key){
+        throw new Error("Definition of property "+key+" by a subclass is required.");
+      });
+    }
+
+    __exports__["default"] = requiredProperty;
+  });
+define("torii/lib/state-machine", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    /*
+     * Modification of Stefan Penner's StateMachine.js: https://github.com/stefanpenner/state_machine.js/
+     *
+     * This modification requires Ember.js to be loaded first
+     */
+
+    var a_slice = Array.prototype.slice;
+    var o_keys = Ember.keys;
+
+    function makeArray(entry){
+      if (entry.constructor === Array) {
+        return entry;
+      }else if(entry) {
+        return [entry];
+      }else{
+        return [];
+      }
+    }
+
+    function StateMachine(options){
+      var initialState = options.initialState;
+      this.states = options.states;
+
+      if (!this.states) {
+        throw new Error('StateMachine needs states');
+      }
+
+      this.state  = this.states[initialState];
+
+      if (!this.state) {
+        throw new Error('Missing initial state');
+      }
+
+      this.currentStateName = initialState;
+
+      this._subscriptions = {};
+
+      var beforeTransitions = (options.beforeTransitions ||[]);
+      var afterTransitions  = (options.afterTransitions ||[]);
+      var rule;
+
+      var i, length;
+      for(i = 0, length = beforeTransitions.length; length > i; i++){
+        rule = beforeTransitions[i];
+        this.beforeTransition.call(this, rule, rule.fn);
+      }
+
+      for(i = 0, length = afterTransitions.length; length > i; i++){
+        rule = afterTransitions[i];
+        this.afterTransition.call(this, rule, rule.fn);
+      }
+    }
+
+    var SPLAT = StateMachine.SPLAT = '*';
+
+    StateMachine.transitionTo = function(state){
+      return function(){
+        this.transitionTo(state);
+      };
+    };
+
+    StateMachine.prototype = {
+      states: {},
+      toString: function(){
+        return "<StateMachine currentState:'" + this.currentStateName +"' >";
+      },
+
+      transitionTo: function(nextStateName){
+        if (nextStateName.charAt(0) === '.') {
+          var splits = this.currentStateName.split('.').slice(0,-1);
+
+          // maybe all states should have an implicit leading dot (kinda like dns)
+          if (0 < splits.length){
+            nextStateName = splits.join('.') + nextStateName;
+          } else {
+            nextStateName = nextStateName.substring(1);
+          }
+        }
+
+        var state = this.states[nextStateName],
+        stateName = this.currentStateName;
+
+        if (!state) {
+          throw new Error('Unknown State: `' + nextStateName + '`');
+        }
+        this.willTransition(stateName, nextStateName);
+
+        this.state = state;
+
+        this.currentStateName = nextStateName;
+        this.didTransition(stateName, nextStateName);
+      },
+
+      beforeTransition: function(options, fn) {
+        this._transition('willTransition', options, fn);
+      },
+
+      afterTransition: function(options, fn) {
+        this._transition('didTransition', options, fn);
+      },
+
+      _transition: function(event, filter, fn) {
+        var from = filter.from || SPLAT,
+          to = filter.to || SPLAT,
+          context = this,
+          matchingTo, matchingFrom,
+          toSplatOffset, fromSplatOffset,
+          negatedMatchingTo, negatedMatchingFrom;
+
+        if (to.indexOf('!') === 0) {
+          matchingTo = to.substr(1);
+          negatedMatchingTo = true;
+        } else {
+          matchingTo = to;
+          negatedMatchingTo = false;
+        }
+
+        if (from.indexOf('!') === 0) {
+          matchingFrom = from.substr(1);
+          negatedMatchingFrom = true;
+        } else {
+          matchingFrom = from;
+          negatedMatchingFrom = false;
+        }
+
+        fromSplatOffset = matchingFrom.indexOf(SPLAT);
+        toSplatOffset = matchingTo.indexOf(SPLAT);
+
+        if (fromSplatOffset >= 0) {
+          matchingFrom = matchingFrom.substring(fromSplatOffset, 0);
+        }
+
+        if (toSplatOffset >= 0) {
+          matchingTo = matchingTo.substring(toSplatOffset, 0);
+        }
+
+        this.on(event, function(currentFrom, currentTo) {
+          var currentMatcherTo = currentTo,
+            currentMatcherFrom = currentFrom,
+            toMatches, fromMatches;
+
+          if (fromSplatOffset >= 0){
+            currentMatcherFrom = currentFrom.substring(fromSplatOffset, 0);
+          }
+
+          if (toSplatOffset >= 0){
+            currentMatcherTo = currentTo.substring(toSplatOffset, 0);
+          }
+
+          toMatches = (currentMatcherTo === matchingTo) !== negatedMatchingTo;
+          fromMatches = (currentMatcherFrom === matchingFrom) !== negatedMatchingFrom;
+
+          if (toMatches && fromMatches) {
+            fn.call(this, currentFrom, currentTo);
+          }
+        });
+      },
+
+      willTransition: function(from, to) {
+        this._notify('willTransition', from, to);
+      },
+
+      didTransition: function(from, to) {
+        this._notify('didTransition', from, to);
+      },
+
+      _notify: function(name, from, to) {
+        var subscriptions = (this._subscriptions[name] || []);
+
+        for( var i = 0, length = subscriptions.length; i < length; i++){
+          subscriptions[i].call(this, from, to);
+        }
+      },
+
+      on: function(event, fn) {
+        this._subscriptions[event] = this._subscriptions[event] || [];
+        this._subscriptions[event].push(fn);
+      },
+
+      off: function(event, fn) {
+        var idx = this._subscriptions[event].indexOf(fn);
+
+        if (fn){
+          if (idx) {
+            this._subscriptions[event].splice(idx, 1);
+          }
+        }else {
+          this._subscriptions[event] = null;
+        }
+      },
+
+      send: function(eventName) {
+        var event = this.state[eventName];
+        var args = a_slice.call(arguments, 1);
+
+        if (event) {
+          return event.apply(this, args);
+        } else {
+          this.unhandledEvent(eventName);
+        }
+      },
+
+      trySend: function(eventName) {
+        var event = this.state[eventName];
+        var args = a_slice.call(arguments,1);
+
+        if (event) {
+          return event.apply(this, args);
+        }
+      },
+
+      event: function(eventName, callback){
+        var states = this.states;
+
+        var eventApi = {
+          transition: function() {
+            var length = arguments.length,
+            first = arguments[0],
+            second = arguments[1],
+            events = normalizeEvents(eventName, first, second);
+
+            o_keys(events).forEach(function(from){
+              var to = events[from];
+              compileEvent(states, eventName, from, to, StateMachine.transitionTo(to));
+            });
+          }
+        };
+
+        callback.call(eventApi);
+      },
+
+      unhandledEvent: function(event){
+        var currentStateName = this.currentStateName,
+        message = "Unknown Event: `" + event + "` for: " + this.toString();
+
+        throw new Error(message);
+      }
+    };
+
+    function normalizeEvents(eventName, first, second){
+      var events;
+      if (!first) { throw new Error('invalid Transition'); }
+
+      if (second) {
+        var froms = first, to = second;
+        events = expandArrayEvents(froms, to);
+      } else {
+        if (first.constructor === Object) {
+          events = first;
+        } else {
+          throw new Error('something went wrong');
+        }
+      }
+
+      return events;
+    }
+
+    function expandArrayEvents(froms, to){
+      return  makeArray(froms).reduce(function(events, from){
+         events[from] = to;
+         return events;
+       }, {});
+    }
+
+    function compileEvent(states, eventName, from, to, fn){
+      var state = states[from];
+
+      if (from && to && state) {
+        states[from][eventName] = fn;
+      } else {
+        var message = "invalid transition state: " + (state && state.currentStateName) + " from: " + from+ " to: " + to ;
+        throw new Error(message);
+      }
+    }
+
+    __exports__["default"] = StateMachine;
+  });
+define("torii/lib/uuid-generator", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    var UUIDGenerator = {
+      generate: function() {
+        var d = new Date().getTime();
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = (d + Math.random()*16)%16 | 0;
+          d = Math.floor(d/16);
+          return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+        });
+        return uuid;
+      },
+
+
+    };
+
+    __exports__["default"] = UUIDGenerator;
+  });
+define("torii/load-initializers", 
+  ["torii/lib/load-initializer","torii/lib/load-instance-initializer","torii/initializers/initialize-torii","torii/initializers/initialize-torii-callback","torii/initializers/initialize-torii-session","torii/instance-initializers/walk-providers","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __dependency5__, __dependency6__, __exports__) {
+    "use strict";
+    var loadInitializer = __dependency1__["default"];
+    var loadInstanceInitializer = __dependency2__["default"];
+    var initializeTorii = __dependency3__["default"];
+    var initializeToriiCallback = __dependency4__["default"];
+    var initializeToriiSession = __dependency5__["default"];
+    var walkProviders = __dependency6__["default"];
+
+    __exports__["default"] = function(){
+      loadInitializer(initializeToriiCallback);
+      loadInitializer(initializeTorii);
+      loadInitializer(initializeToriiSession);
+      loadInstanceInitializer(walkProviders);
+    }
+  });
+define("torii/providers/azure-ad-oauth2", 
+  ["torii/providers/oauth2-code","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var Oauth2 = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    var computed = Ember.computed;
+
+    /**
+     * This class implements authentication against AzureAD
+     * using the OAuth2 authorization flow in a popup window.
+     * @class
+     */
+    var AzureAdOauth2 = Oauth2.extend({
+      name: 'azure-ad-oauth2',
+
+      baseUrl: computed(function() {
+        return 'https://login.windows.net/' + this.get('tennantId') + '/oauth2/authorize';
+      }),
+
+      tennantId: configurable('tennantId', 'common'),
+
+      // additional url params that this provider requires
+      requiredUrlParams: ['state', 'api-version', 'client_id'],
+
+      optionalUrlParams: ['scope', 'nonce', 'response_mode'],
+
+      responseMode: configurable('responseMode', null),
+
+      responseParams: computed(function () {
+        return [ this.get('responseType') ];
+      }),
+
+      state: 'STATE',
+
+      apiVersion: '1.0',
+
+      responseType: configurable('responseType', 'code'),
+
+      redirectUri: configurable('redirectUri', function(){
+        // A hack that allows redirectUri to be configurable
+        // but default to the superclass
+        return this._super();
+      })
+    });
+
+    __exports__["default"] = AzureAdOauth2;
+  });
+define("torii/providers/base", 
+  ["torii/lib/required-property","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var requiredProperty = __dependency1__["default"];
+
+    var computed = Ember.computed;
+
+    /**
+     * The base class for all torii providers
+     * @class BaseProvider
+     */
+    var Base = Ember.Object.extend({
+
+     /**
+      * The name of the provider
+      * @property {string} name
+      */
+      name: requiredProperty(),
+
+      /**
+       * The name of the configuration property
+       * that holds config information for this provider.
+       * @property {string} configNamespace
+       */
+      configNamespace: computed('name', function(){
+        return 'providers.'+this.get('name');
+      })
+
+    });
+
+    __exports__["default"] = Base;
+  });
+define("torii/providers/edmodo-connect", 
+  ["torii/providers/oauth2-bearer","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var Oauth2Bearer = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    /*
+    * This class implements authentication against Edmodo
+    * with the token flow. For more information see
+    * https://developers.edmodo.com/edmodo-connect/docs/#connecting-your-application
+    * */
+    __exports__["default"] = Oauth2Bearer.extend({
+      name: 'edmodo-connect',
+      baseUrl: 'https://api.edmodo.com/oauth/authorize',
+      responseParams: ['access_token'],
+
+      /* Configurable parameters */
+      redirectUri: configurable('redirectUri'),
+      // See https://developers.edmodo.com/edmodo-connect/docs/#connecting-your-application for the full list of scopes
+      scope: configurable('scope', 'basic')
+    });
+  });
+define("torii/providers/facebook-connect", 
+  ["torii/providers/base","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    /* global FB, $ */
+
+    /**
+     * This class implements authentication against facebook
+     * connect using the Facebook SDK.
+     */
+
+    var Provider = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    var on = Ember.on;
+    var fbPromise;
+
+    function fbLoad(settings){
+      if (fbPromise) { return fbPromise; }
+
+      var original = window.fbAsyncInit;
+      var locale = settings.locale;
+      delete settings.locale;
+      fbPromise = new Ember.RSVP.Promise(function(resolve, reject){
+        window.fbAsyncInit = function(){
+          FB.init(settings);
+          Ember.run(null, resolve);
+        };
+        $.getScript('//connect.facebook.net/' + locale + '/sdk.js');
+      }).then(function(){
+        window.fbAsyncInit = original;
+        if (window.fbAsyncInit) {
+          window.fbAsyncInit.hasRun = true;
+          window.fbAsyncInit();
+        }
+      });
+
+      return fbPromise;
+    }
+
+    function fbLogin(scope){
+      return new Ember.RSVP.Promise(function(resolve, reject){
+        FB.login(function(response){
+          if (response.authResponse) {
+            Ember.run(null, resolve, response.authResponse);
+          } else {
+            Ember.run(null, reject, response.status);
+          }
+        }, { scope: scope });
+      });
+    }
+
+    function fbNormalize(response){
+      return {
+        userId: response.userID,
+        accessToken: response.accessToken,
+        expiresIn: response.expiresIn
+      };
+    }
+
+    var Facebook = Provider.extend({
+
+      // Facebook connect SDK settings:
+      name:  'facebook-connect',
+      scope: configurable('scope', 'email'),
+      appId: configurable('appId'),
+      version: configurable('version', 'v2.2'),
+      xfbml: configurable('xfbml', false),
+      channelUrl: configurable('channelUrl', null),
+      locale: configurable('locale', 'en_US'),
+
+      // API:
+      //
+      open: function(){
+        var scope = this.get('scope');
+
+        return fbLoad( this.settings() )
+          .then(function(){
+            return fbLogin(scope);
+          })
+          .then(fbNormalize);
+      },
+
+      settings: function(){
+        return {
+          status: true,
+          cookie: true,
+          xfbml: this.get('xfbml'),
+          version: this.get('version'),
+          appId: this.get('appId'),
+          channelUrl: this.get('channelUrl'),
+          locale: this.get('locale')
+        };
+      },
+
+      // Load Facebook's script eagerly, so that the window.open
+      // in FB.login will be part of the same JS frame as the
+      // click itself.
+      loadFbLogin: on('init', function(){
+        fbLoad( this.settings() );
+      })
+
+    });
+
+    __exports__["default"] = Facebook;
+  });
+define("torii/providers/facebook-oauth2", 
+  ["torii/configuration","torii/providers/oauth2-code","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var configurable = __dependency1__.configurable;
+    var Oauth2 = __dependency2__["default"];
+
+    __exports__["default"] = Oauth2.extend({
+      name:    'facebook-oauth2',
+      baseUrl: 'https://www.facebook.com/dialog/oauth',
+
+      // Additional url params that this provider requires
+      requiredUrlParams: ['display'],
+
+      responseParams: ['code'],
+
+      scope:        configurable('scope', 'email'),
+
+      display: 'popup',
+      redirectUri: configurable('redirectUri', function(){
+        // A hack that allows redirectUri to be configurable
+        // but default to the superclass
+        return this._super();
+      }),
+
+      open: function() {
+        return this._super().then(function(authData){
+          if (authData.authorizationCode && authData.authorizationCode === '200') {
+            // indication that the user hit 'cancel', not 'ok'
+            throw new Error('User canceled authorization');
+          }
+
+          return authData;
+        });
+      }
+    });
+  });
+define("torii/providers/github-oauth2", 
+  ["torii/providers/oauth2-code","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var Oauth2 = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    /**
+     * This class implements authentication against Github
+     * using the OAuth2 authorization flow in a popup window.
+     * @class
+     */
+    var GithubOauth2 = Oauth2.extend({
+      name:       'github-oauth2',
+      baseUrl:    'https://github.com/login/oauth/authorize',
+
+      // additional url params that this provider requires
+      requiredUrlParams: ['state'],
+
+      responseParams: ['code'],
+
+      state: 'STATE',
+
+      redirectUri: configurable('redirectUri', function(){
+        // A hack that allows redirectUri to be configurable
+        // but default to the superclass
+        return this._super();
+      })
+    });
+
+    __exports__["default"] = GithubOauth2;
+  });
+define("torii/providers/google-oauth2-bearer", 
+  ["torii/providers/oauth2-bearer","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    /**
+     * This class implements authentication against google
+     * using the client-side OAuth2 authorization flow in a popup window.
+     */
+
+    var Oauth2Bearer = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    var GoogleOauth2Bearer = Oauth2Bearer.extend({
+
+      name:    'google-oauth2-bearer',
+      baseUrl: 'https://accounts.google.com/o/oauth2/auth',
+
+      // additional params that this provider requires
+      requiredUrlParams: ['state'],
+      optionalUrlParams: ['scope', 'request_visible_actions'],
+
+      requestVisibleActions: configurable('requestVisibleActions', ''),
+
+      responseParams: ['access_token'],
+
+      scope: configurable('scope', 'email'),
+
+      state: configurable('state', 'STATE'),
+
+      redirectUri: configurable('redirectUri',
+                                'http://localhost:8000/oauth2callback')
+    });
+
+    __exports__["default"] = GoogleOauth2Bearer;
+  });
+define("torii/providers/google-oauth2", 
+  ["torii/providers/oauth2-code","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    /**
+     * This class implements authentication against google
+     * using the OAuth2 authorization flow in a popup window.
+     */
+
+    var Oauth2 = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    var GoogleOauth2 = Oauth2.extend({
+
+      name:    'google-oauth2',
+      baseUrl: 'https://accounts.google.com/o/oauth2/auth',
+
+      // additional params that this provider requires
+      requiredUrlParams: ['state'],
+      optionalUrlParams: ['scope', 'request_visible_actions', 'access_type', 'approval_prompt', 'hd'],
+
+      requestVisibleActions: configurable('requestVisibleActions', ''),
+
+      accessType: configurable('accessType', ''),
+
+      responseParams: ['code'],
+
+      scope: configurable('scope', 'email'),
+
+      state: configurable('state', 'STATE'),
+
+      approvalPrompt: configurable('approvalPrompt', 'auto'),
+
+      redirectUri: configurable('redirectUri',
+                                'http://localhost:8000/oauth2callback'),
+
+      hd: configurable('hd', '')
+    });
+
+    __exports__["default"] = GoogleOauth2;
+  });
+define("torii/providers/linked-in-oauth2", 
+  ["torii/providers/oauth2-code","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var Oauth2 = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    /**
+     * This class implements authentication against Linked In
+     * using the OAuth2 authorization flow in a popup window.
+     *
+     * @class LinkedInOauth2
+     */
+    var LinkedInOauth2 = Oauth2.extend({
+      name:       'linked-in-oauth2',
+      baseUrl:    'https://www.linkedin.com/uas/oauth2/authorization',
+
+      // additional url params that this provider requires
+      requiredUrlParams: ['state'],
+
+      responseParams: ['code'],
+
+      state: 'STATE',
+
+      redirectUri: configurable('redirectUri', function(){
+        // A hack that allows redirectUri to be configurable
+        // but default to the superclass
+        return this._super();
+      })
+
+    });
+
+    __exports__["default"] = LinkedInOauth2;
+  });
+define("torii/providers/oauth1", 
+  ["torii/providers/base","torii/configuration","torii/lib/query-string","torii/lib/required-property","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+    "use strict";
+    /*
+     * This class implements authentication against an API
+     * using the OAuth1.0a request token flow in a popup window.
+     */
+
+    var Provider = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+    var QueryString = __dependency3__["default"];
+    var requiredProperty = __dependency4__["default"];
+
+    function currentUrl(){
+      return [window.location.protocol,
+              "//",
+              window.location.host,
+              window.location.pathname].join('');
+    }
+
+    var Oauth1 = Provider.extend({
+      name: 'oauth1',
+
+      requestTokenUri: configurable('requestTokenUri'),
+
+      buildRequestTokenUrl: function(){
+        var requestTokenUri = this.get('requestTokenUri');
+        return requestTokenUri;
+      },
+
+      open: function(){
+        var name        = this.get('name'),
+            url         = this.buildRequestTokenUrl();
+
+        return this.get('popup').open(url, ['code']).then(function(authData){
+          authData.provider = name;
+          return authData;
+        });
+      }
+    });
+
+    __exports__["default"] = Oauth1;
+  });
+define("torii/providers/oauth2-bearer", 
+  ["torii/providers/oauth2-code","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var Provider = __dependency1__["default"];
+
+    var Oauth2Bearer = Provider.extend({
+      responseType: 'token',
+
+      /**
+       * @method open
+       * @return {Promise<object>} If the authorization attempt is a success,
+       * the promise will resolve an object containing the following keys:
+       *   - authorizationToken: The `token` from the 3rd-party provider
+       *   - provider: The name of the provider (i.e., google-oauth2)
+       *   - redirectUri: The redirect uri (some server-side exchange flows require this)
+       * If there was an error or the user either canceled the authorization or
+       * closed the popup window, the promise rejects.
+       */
+      open: function(){
+        var name        = this.get('name'),
+            url         = this.buildUrl(),
+            redirectUri = this.get('redirectUri'),
+            responseParams = this.get('responseParams');
+
+        return this.get('popup').open(url, responseParams).then(function(authData){
+          var missingResponseParams = [];
+
+          responseParams.forEach(function(param){
+            if (authData[param] === undefined) {
+              missingResponseParams.push(param);
+            }
+          });
+
+          if (missingResponseParams.length){
+            throw new Error("The response from the provider is missing " +
+                  "these required response params: " + responseParams.join(', '));
+          }
+
+          return {
+            authorizationToken: authData,
+            provider: name,
+            redirectUri: redirectUri
+          };
+        });
+      }
+    });
+
+    __exports__["default"] = Oauth2Bearer;
+  });
+define("torii/providers/oauth2-code", 
+  ["torii/providers/base","torii/configuration","torii/lib/query-string","torii/lib/required-property","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __dependency4__, __exports__) {
+    "use strict";
+    var Provider = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+    var QueryString = __dependency3__["default"];
+    var requiredProperty = __dependency4__["default"];
+
+    var computed = Ember.computed;
+
+    function currentUrl(){
+      return [window.location.protocol,
+              "//",
+              window.location.host,
+              window.location.pathname].join('');
+    }
+
+    /**
+     * Implements authorization against an OAuth2 API
+     * using the OAuth2 authorization flow in a popup window.
+     *
+     * Subclasses should extend this class and define the following properties:
+     *   - requiredUrlParams: If there are additional required params
+     *   - optionalUrlParams: If there are additional optional params
+     *   - name: The name used in the configuration `providers` key
+     *   - baseUrl: The base url for OAuth2 code-based flow at the 3rd-party
+     *
+     *   If there are any additional required or optional url params,
+     *   include default values for them (if appropriate).
+     *
+     * @class Oauth2Provider
+     */
+    var Oauth2 = Provider.extend({
+      concatenatedProperties: ['requiredUrlParams','optionalUrlParams'],
+
+      /**
+       * The parameters that must be included as query params in the 3rd-party provider's url that we build.
+       * These properties are in the format that should be in the URL (i.e.,
+       * usually underscored), but they are looked up as camelCased properties
+       * on the instance of this provider. For example, if the 'client_id' is
+       * a required url param, when building the URL we look up the value of
+       * the 'clientId' (camel-cased) property and put it in the URL as
+       * 'client_id=' + this.get('clientId')
+       * Subclasses can add additional required url params.
+       *
+       * @property {array} requiredUrlParams
+       */
+      requiredUrlParams: ['response_type', 'client_id', 'redirect_uri'],
+
+      /**
+       * Parameters that may be included in the 3rd-party provider's url that we build.
+       * Subclasses can add additional optional url params.
+       *
+       * @property {array} optionalUrlParams
+       */
+      optionalUrlParams: ['scope'],
+
+      /**
+       * The base url for the 3rd-party provider's OAuth2 flow (example: 'https://github.com/login/oauth/authorize')
+       *
+       * @property {string} baseUrl
+       */
+      baseUrl:      requiredProperty(),
+
+      /**
+       * The apiKey (sometimes called app id) that identifies the registered application at the 3rd-party provider
+       *
+       * @property {string} apiKey
+       */
+      apiKey:       configurable('apiKey'),
+
+      scope:        configurable('scope', null),
+      clientId:     configurable('clientId', function () { return this.get('apiKey'); }),
+
+      /**
+       * The oauth response type we expect from the third party provider. Hardcoded to 'code' for oauth2-code flows
+       * @property {string} responseType
+       */
+      responseType: 'code',
+
+     /**
+      * List of parameters that we expect
+      * to see in the query params that the 3rd-party provider appends to
+      * our `redirectUri` after the user confirms/denies authorization.
+      * If any of these parameters are missing, the OAuth attempt is considered
+      * to have failed (usually this is due to the user hitting the 'cancel' button)
+      *
+      * @property {array} responseParams
+      */
+      responseParams: requiredProperty(),
+
+      redirectUri: computed(function(){
+        return currentUrl();
+      }),
+
+      buildQueryString: function(){
+        var requiredParams = this.get('requiredUrlParams'),
+            optionalParams = this.get('optionalUrlParams');
+
+        var qs = new QueryString(this, requiredParams, optionalParams);
+        return qs.toString();
+      },
+
+      buildUrl: function(){
+        var base = this.get('baseUrl'),
+            qs   = this.buildQueryString();
+
+        return [base, qs].join('?');
+      },
+
+      /**
+       * @method open
+       * @return {Promise<object>} If the authorization attempt is a success,
+       * the promise will resolve an object containing the following keys:
+       *   - authorizationCode: The `code` from the 3rd-party provider
+       *   - provider: The name of the provider (i.e., google-oauth2)
+       *   - redirectUri: The redirect uri (some server-side exchange flows require this)
+       * If there was an error or the user either canceled the authorization or
+       * closed the popup window, the promise rejects.
+       */
+      open: function(){
+        var name        = this.get('name'),
+            url         = this.buildUrl(),
+            redirectUri = this.get('redirectUri'),
+            responseParams = this.get('responseParams'),
+            responseType = this.get('responseType');
+
+        return this.get('popup').open(url, responseParams).then(function(authData){
+          var missingResponseParams = [];
+
+          responseParams.forEach(function(param){
+            if (authData[param] === undefined) {
+              missingResponseParams.push(param);
+            }
+          });
+
+          if (missingResponseParams.length){
+            throw new Error("The response from the provider is missing " +
+                  "these required response params: " + responseParams.join(', '));
+          }
+
+          return {
+            authorizationCode: authData[responseType],
+            provider: name,
+            redirectUri: redirectUri
+          };
+        });
+      }
+    });
+
+    __exports__["default"] = Oauth2;
+  });
+define("torii/providers/stripe-connect", 
+  ["torii/providers/oauth2-code","torii/configuration","exports"],
+  function(__dependency1__, __dependency2__, __exports__) {
+    "use strict";
+    var Oauth2 = __dependency1__["default"];
+    var configurable = __dependency2__.configurable;
+
+    __exports__["default"] = Oauth2.extend({
+      name:       'stripe-connect',
+      baseUrl:    'https://connect.stripe.com/oauth/authorize',
+
+      // additional url params that this provider requires
+      requiredUrlParams: [],
+      optionalUrlParams: ['stripe_landing', 'always_prompt'],
+
+      responseParams: ['code'],
+
+      scope: configurable('scope', 'read_write'),
+      stripeLanding: configurable('stripeLanding', ''),
+      alwaysPrompt: configurable('alwaysPrompt', 'false'),
+
+      redirectUri: configurable('redirectUri', function() {
+        // A hack that allows redirectUri to be configurable
+        // but default to the superclass
+        return this._super();
+      })
+    });
+  });
+define("torii/providers/twitter-oauth1", 
+  ["torii/providers/oauth1","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var Oauth1Provider = __dependency1__["default"];
+
+    __exports__["default"] = Oauth1Provider.extend({
+      name: 'twitter'
+    });
+  });
+define("torii/redirect-handler", 
+  ["./lib/popup-id-serializer","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    /**
+     * RedirectHandler will attempt to find
+     * these keys in the URL. If found,
+     * this is an indication to Torii that
+     * the Ember app has loaded inside a popup
+     * and should postMessage this data to window.opener
+     */
+
+    var PopupIdSerializer = __dependency1__["default"];
+
+
+    var RedirectHandler = Ember.Object.extend({
+
+      init: function(windowObject){
+        this.windowObject = windowObject;
+      },
+
+      run: function(){
+        var windowObject = this.windowObject;
+
+        return new Ember.RSVP.Promise(function(resolve, reject){
+          var popupId = PopupIdSerializer.deserialize(windowObject.name);
+
+          if (popupId){
+            var key = PopupIdSerializer.serialize(popupId);
+            var url = windowObject.location.toString();
+
+            windowObject.localStorage.setItem(key, url);
+
+            windowObject.close();
+          } else{
+            reject('Not a torii popup');
+          }
+        });
+      }
+
+    });
+
+    RedirectHandler.reopenClass({
+      // untested
+      handle: function(windowObject){
+        var handler = new RedirectHandler(windowObject);
+        return handler.run();
+      }
+    });
+
+    __exports__["default"] = RedirectHandler;
+  });
+define("torii/services/popup", 
+  ["torii/lib/parse-query-string","torii/lib/uuid-generator","torii/lib/popup-id-serializer","exports"],
+  function(__dependency1__, __dependency2__, __dependency3__, __exports__) {
+    "use strict";
+    var ParseQueryString = __dependency1__["default"];
+    var UUIDGenerator = __dependency2__["default"];
+    var PopupIdSerializer = __dependency3__["default"];
+
+    var on = Ember.on;
+
+    function stringifyOptions(options){
+      var optionsStrings = [];
+      for (var key in options) {
+        if (options.hasOwnProperty(key)) {
+          var value;
+          switch (options[key]) {
+            case true:
+              value = '1';
+              break;
+            case false:
+              value = '0';
+              break;
+            default:
+              value = options[key];
+          }
+          optionsStrings.push(
+            key+"="+value
+          );
+        }
+      }
+      return optionsStrings.join(',');
+    }
+
+    function prepareOptions(options){
+      var width = options.width || 500,
+          height = options.height || 500;
+      return Ember.$.extend({
+        left: ((screen.width / 2) - (width / 2)),
+        top: ((screen.height / 2) - (height / 2)),
+        width: width,
+        height: height
+      }, options);
+    }
+
+    function parseMessage(url, keys){
+      var parser = new ParseQueryString(url, keys),
+          data = parser.parse();
+      return data;
+    }
+
+    var Popup = Ember.Object.extend(Ember.Evented, {
+
+      init: function(options){
+        this._super.apply(this, arguments);
+        options = options || {};
+        this.popupIdGenerator = options.popupIdGenerator || UUIDGenerator;
+      },
+
+      // Open a popup window. Returns a promise that resolves or rejects
+      // accoring to if the popup is redirected with arguments in the URL.
+      //
+      // For example, an OAuth2 request:
+      //
+      // popup.open('http://some-oauth.com', ['code']).then(function(data){
+      //   // resolves with data.code, as from http://app.com?code=13124
+      // });
+      //
+      open: function(url, keys, options){
+        var service   = this,
+            lastPopup = this.popup;
+
+
+        return new Ember.RSVP.Promise(function(resolve, reject){
+          if (lastPopup) {
+            service.close();
+          }
+
+          var popupId = service.popupIdGenerator.generate();
+
+          var optionsString = stringifyOptions(prepareOptions(options || {}));
+          var windowName = PopupIdSerializer.serialize(popupId);
+          service.popup = window.open(url, windowName, optionsString);
+
+          if (service.popup && !service.popup.closed) {
+            service.popup.focus();
+          } else {
+            reject(new Error(
+              'Popup could not open or was closed'));
+            return;
+          }
+
+          service.one('didClose', function(){
+            // If we don't receive a message before the timeout, we fail. Normally,
+            // the message will be received and the window will close immediately.
+            service.timeout = Ember.run.later(service, function() {
+              reject(new Error("Popup was closed, authorization was denied, or a authentication message otherwise not received before the window closed."));
+            }, 100);
+          });
+
+          Ember.$(window).on('storage.torii', function(event){
+            var storageEvent = event.originalEvent;
+
+            var popupIdFromEvent = PopupIdSerializer.deserialize(storageEvent.key);
+            if (popupId === popupIdFromEvent){
+              var data = parseMessage(storageEvent.newValue, keys);
+              localStorage.removeItem(storageEvent.key);
+              Ember.run(function() {
+                resolve(data);
+              });
+            }
+          });
+
+          service.schedulePolling();
+
+        })["finally"](function(){
+          // didClose will reject this same promise, but it has already resolved.
+          service.close();
+          service.clearTimeout();
+          Ember.$(window).off('storage.torii');
+        });
+      },
+
+      close: function(){
+        if (this.popup) {
+          this.popup = null;
+          this.trigger('didClose');
+        }
+      },
+
+      pollPopup: function(){
+        if (!this.popup) {
+          return;
+        }
+        if (this.popup.closed) {
+          this.trigger('didClose');
+        }
+      },
+
+      schedulePolling: function(){
+        this.polling = Ember.run.later(this, function(){
+          this.pollPopup();
+          this.schedulePolling();
+        }, 35);
+      },
+
+      // Clear the timeout, in case it hasn't fired.
+      clearTimeout: function(){
+        Ember.run.cancel(this.timeout);
+        this.timeout = null;
+      },
+
+      stopPolling: on('didClose', function(){
+        Ember.run.cancel(this.polling);
+      }),
+
+    });
+
+    __exports__["default"] = Popup;
+  });
+define("torii/session", 
+  ["torii/session/state-machine","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var createStateMachine = __dependency1__["default"];
+
+    var computed = Ember.computed;
+    var on = Ember.on;
+
+    function lookupAdapter(container, authenticationType){
+      var adapter = container.lookup('torii-adapter:'+authenticationType);
+      if (!adapter) {
+        adapter = container.lookup('torii-adapter:application');
+      }
+      return adapter;
+    }
+
+    var Session = Ember.ObjectProxy.extend({
+      state: null,
+
+      stateMachine: computed(function(){
+        return createStateMachine(this);
+      }),
+
+      setupStateProxy: on('init', function(){
+        var sm    = this.get('stateMachine'),
+            proxy = this;
+        sm.on('didTransition', function(){
+          proxy.set('content', sm.state);
+          proxy.set('currentStateName', sm.currentStateName);
+        });
+      }),
+
+      // Make these properties one-way.
+      setUnknownProperty: Ember.K,
+
+      open: function(provider, options){
+        var container = this.container,
+            torii     = this.get('torii'),
+            sm        = this.get('stateMachine');
+
+        return new Ember.RSVP.Promise(function(resolve){
+          sm.send('startOpen');
+          resolve();
+        }).then(function(){
+          return torii.open(provider, options);
+        }).then(function(authorization){
+          var adapter = lookupAdapter(
+            container, provider
+          );
+
+          return adapter.open(authorization);
+        }).then(function(user){
+          sm.send('finishOpen', user);
+          return user;
+        })["catch"](function(error){
+          sm.send('failOpen', error);
+          return Ember.RSVP.reject(error);
+        });
+      },
+
+      fetch: function(provider, options){
+        var container = this.container,
+            sm        = this.get('stateMachine');
+
+        return new Ember.RSVP.Promise(function(resolve){
+          sm.send('startFetch');
+          resolve();
+        }).then(function(){
+          var adapter = lookupAdapter(
+            container, provider
+          );
+
+          return adapter.fetch(options);
+        }).then(function(data){
+          sm.send('finishFetch', data);
+          return;
+        })["catch"](function(error){
+          sm.send('failFetch', error);
+          return Ember.RSVP.reject(error);
+        });
+      },
+
+      close: function(provider, options){
+        var container = this.container,
+            sm        = this.get('stateMachine');
+
+        return new Ember.RSVP.Promise(function(resolve){
+          sm.send('startClose');
+          resolve();
+        }).then(function(){
+          var adapter = lookupAdapter(container, provider);
+          return adapter.close(options);
+        }).then(function(){
+          sm.send('finishClose');
+        })["catch"](function(error){
+          sm.send('failClose', error);
+          return Ember.RSVP.reject(error);
+        });
+      }
+
+    });
+
+    __exports__["default"] = Session;
+  });
+define("torii/session/state-machine", 
+  ["torii/lib/state-machine","exports"],
+  function(__dependency1__, __exports__) {
+    "use strict";
+    var StateMachine = __dependency1__["default"];
+
+    var transitionTo = StateMachine.transitionTo;
+
+    function copyProperties(data, target) {
+      for (var key in data) {
+        if (data.hasOwnProperty(key)) {
+          target[key] = data[key];
+        }
+      }
+    }
+
+    function transitionToClearing(target, propertiesToClear) {
+      return function(){
+        for (var i;i<propertiesToClear.length;i++) {
+          this[propertiesToClear[i]] = null;
+        }
+        this.transitionTo(target);
+      };
+    }
+
+    __exports__["default"] = function(session){
+      var sm = new StateMachine({
+        initialState: 'unauthenticated',
+
+        states: {
+          unauthenticated: {
+            errorMessage: null,
+            isAuthenticated: false,
+            // Actions
+            startOpen: transitionToClearing('opening', ['errorMessage']),
+            startFetch: transitionToClearing('fetching', ['errorMessage'])
+          },
+          authenticated: {
+            // Properties
+            currentUser: null,
+            isAuthenticated: true,
+            startClose: transitionTo('closing')
+          },
+          opening: {
+            isWorking: true,
+            isOpening: true,
+            // Actions
+            finishOpen: function(data){
+              copyProperties(data, this.states['authenticated']);
+              this.transitionTo('authenticated');
+            },
+            failOpen: function(errorMessage){
+              this.states['unauthenticated'].errorMessage = errorMessage;
+              this.transitionTo('unauthenticated');
+            }
+          },
+          fetching: {
+            isWorking: true,
+            isFetching: true,
+            // Actions
+            finishFetch: function(data){
+              copyProperties(data, this.states['authenticated']);
+              this.transitionTo('authenticated');
+            },
+            failFetch: function(errorMessage){
+              this.states['unauthenticated'].errorMessage = errorMessage;
+              this.transitionTo('unauthenticated');
+            }
+          },
+          closing: {
+            isWorking: true,
+            isClosing: true,
+            isAuthenticated: true,
+            // Actions
+            finishClose: function(){
+              this.transitionTo('unauthenticated');
+            },
+            failClose: function(errorMessage){
+              this.states['unauthenticated'].errorMessage = errorMessage;
+              this.transitionTo('unauthenticated');
+            }
+          }
+        }
+      });
+      sm.session = session;
+      return sm;
+    }
+  });
+define("torii/torii", 
+  ["exports"],
+  function(__exports__) {
+    "use strict";
+    function lookupProvider(container, providerName){
+      return container.lookup('torii-provider:'+providerName);
+    }
+
+    function proxyToProvider(methodName, requireMethod){
+      return function(providerName, options){
+        var container = this.container;
+        var provider = lookupProvider(container, providerName);
+        if (!provider) {
+          throw new Error("Expected a provider named '"+providerName+"' " +
+                          ", did you forget to register it?");
+        }
+
+        if (!provider[methodName]) {
+          if (requireMethod) {
+            throw new Error("Expected provider '"+providerName+"' to define " +
+                            "the '"+methodName+"' method.");
+          } else {
+            return Ember.RSVP.Promise.resolve({});
+          }
+        }
+        return new Ember.RSVP.Promise(function(resolve, reject){
+          resolve( provider[methodName](options) );
+        });
+      };
+    }
+
+    /**
+     * Torii is an engine for authenticating against various
+     * providers. For example, you can open a session with
+     * Linked In via Oauth2 and authorization codes by doing
+     * the following:
+     *
+     *     Torii.open('linked-in-oauth2').then(function(authData){
+     *       console.log(authData.authorizationCode);
+     *     });
+     *
+     * For traditional authentication flows, you will often use
+     * Torii via the Torii.Session API.
+     *
+     * @class Torii
+     */
+    var Torii = Ember.Object.extend({
+
+      /**
+       * Open an authorization against an API. A promise resolving
+       * with an authentication response object is returned. These
+       * response objects,  are found in the "torii/authentications"
+       * namespace.
+       *
+       * @method open
+       * @param {String} providerName The provider to open
+       * @return {Ember.RSVP.Promise} Promise resolving to an authentication object
+       */
+      open:  proxyToProvider('open', true),
+
+      /**
+       * Return a promise which will resolve if the provider has
+       * already been opened.
+       *
+       * @method fetch
+       * @param {String} providerName The provider to open
+       * @return {Ember.RSVP.Promise} Promise resolving to an authentication object
+       */
+      fetch:  proxyToProvider('fetch'),
+
+      /**
+       * Return a promise which will resolve when the provider has been
+       * closed. Closing a provider may not always be a meaningful action,
+       * and may be better handled by torii's session management instead.
+       *
+       * @method close
+       * @param {String} providerName The provider to open
+       * @return {Ember.RSVP.Promise} Promise resolving when the provider is closed
+       */
+      close:  proxyToProvider('close')
+    });
+
+    __exports__["default"] = Torii;
+  });
 ;define("ember-cli-app-version", ["ember-cli-app-version/index", "ember", "exports"], function(__index__, __Ember__, __exports__) {
   "use strict";
   __Ember__["default"].keys(__index__).forEach(function(key){
@@ -78713,6 +80655,1793 @@ define('ember-moment/helpers/moment', ['exports', 'ember', 'moment'], function (
   }
 
   exports['default'] = moment;
+
+});
+define("torii", ["torii/index", "ember", "exports"], function(__index__, __Ember__, __exports__) {
+  "use strict";
+  __Ember__["default"].keys(__index__).forEach(function(key){
+    __exports__[key] = __index__[key];
+  });
+});
+
+define('torii/adapters/application', ['exports'], function (exports) {
+
+  'use strict';
+
+  var ApplicationAdapter = Ember.Object.extend({
+
+    open: function(){
+      return new Ember.RSVP.Promise(function(){
+        throw new Error(
+          'The Torii adapter must implement `open` for a session to be opened');
+      });
+    },
+
+    fetch: function(){
+      return new Ember.RSVP.Promise(function(){
+        throw new Error(
+          'The Torii adapter must implement `fetch` for a session to be fetched');
+      });
+    },
+
+    close: function(){
+      return new Ember.RSVP.Promise(function(){
+        throw new Error(
+          'The Torii adapter must implement `close` for a session to be closed');
+      });
+    }
+
+  });
+
+  exports['default'] = ApplicationAdapter;
+
+});
+define('torii/bootstrap/session', ['exports', 'torii/session'], function (exports, Session) {
+
+  'use strict';
+
+  exports['default'] = function(container, sessionName){
+    container.register('torii:session', Session['default']);
+    container.injection('torii:session', 'torii', 'torii:main');
+    container.injection('route',      sessionName, 'torii:session');
+    container.injection('controller', sessionName, 'torii:session');
+
+    return container;
+  }
+
+});
+define('torii/bootstrap/torii', ['exports', 'torii/torii', 'torii/providers/linked-in-oauth2', 'torii/providers/google-oauth2', 'torii/providers/google-oauth2-bearer', 'torii/providers/facebook-connect', 'torii/providers/facebook-oauth2', 'torii/adapters/application', 'torii/providers/twitter-oauth1', 'torii/providers/github-oauth2', 'torii/providers/azure-ad-oauth2', 'torii/providers/stripe-connect', 'torii/providers/edmodo-connect', 'torii/services/popup'], function (exports, Torii, LinkedInOauth2Provider, GoogleOauth2Provider, GoogleOauth2BearerProvider, FacebookConnectProvider, FacebookOauth2Provider, ApplicationAdapter, TwitterProvider, GithubOauth2Provider, AzureAdOauth2Provider, StripeConnectProvider, EdmodoConnectProvider, PopupService) {
+
+  'use strict';
+
+  exports['default'] = function(container){
+    container.register('torii:main', Torii['default']);
+    container.register('torii-provider:linked-in-oauth2', LinkedInOauth2Provider['default']);
+    container.register('torii-provider:google-oauth2', GoogleOauth2Provider['default']);
+    container.register('torii-provider:google-oauth2-bearer', GoogleOauth2BearerProvider['default']);
+    container.register('torii-provider:facebook-connect', FacebookConnectProvider['default']);
+    container.register('torii-provider:facebook-oauth2', FacebookOauth2Provider['default']);
+    container.register('torii-provider:twitter', TwitterProvider['default']);
+    container.register('torii-provider:github-oauth2', GithubOauth2Provider['default']);
+    container.register('torii-provider:azure-ad-oauth2', AzureAdOauth2Provider['default']);
+    container.register('torii-provider:stripe-connect', StripeConnectProvider['default']);
+    container.register('torii-provider:edmodo-connect', EdmodoConnectProvider['default']);
+    container.register('torii-adapter:application', ApplicationAdapter['default']);
+
+    container.register('torii-service:popup', PopupService['default']);
+
+    container.injection('torii-provider', 'popup', 'torii-service:popup');
+
+    if (window.DS) {
+      var storeFactoryName = 'store:main';
+      if (container.has('service:store')) {
+        storeFactoryName = 'service:store';
+      }
+      container.injection('torii-provider', 'store', storeFactoryName);
+      container.injection('torii-adapter', 'store', storeFactoryName);
+    }
+
+    return container;
+  }
+
+});
+define('torii/configuration', ['exports'], function (exports) {
+
+  'use strict';
+
+  exports.configurable = configurable;
+
+  var get = Ember.get;
+
+  var configuration       = require("openguide-frontend/config/environment")["default"].torii || {};
+  configuration.providers = configuration.providers || {};
+
+  function configurable(configKey, defaultValue){
+    return Ember.computed(function(){
+      var namespace = this.get('configNamespace'),
+          fullKey   = namespace ? [namespace, configKey].join('.') : configKey,
+          value     = get(configuration, fullKey);
+      if (typeof value === 'undefined') {
+        if (typeof defaultValue !== 'undefined') {
+          if (typeof defaultValue === 'function') {
+            return defaultValue.call(this);
+          } else {
+            return defaultValue;
+          }
+        } else {
+          throw new Error("Expected configuration value "+fullKey+" to be defined!");
+        }
+      }
+      return value;
+    });
+  }
+
+  exports['default'] = configuration;
+
+});
+define('torii/initializers/initialize-torii-callback', ['exports', 'torii/redirect-handler'], function (exports, RedirectHandler) {
+
+  'use strict';
+
+  exports['default'] = {
+    name: 'torii-callback',
+    before: 'torii',
+    initialize: function(container, app){
+      app.deferReadiness();
+      RedirectHandler['default'].handle(window).catch(function(){
+        app.advanceReadiness();
+      });
+    }
+  };
+
+});
+define('torii/initializers/initialize-torii-session', ['exports', 'torii/configuration', 'torii/bootstrap/session'], function (exports, configuration, bootstrapSession) {
+
+  'use strict';
+
+  exports['default'] = {
+    name: 'torii-session',
+    after: 'torii',
+
+    initialize: function(container){
+      if (configuration['default'].sessionServiceName) {
+        bootstrapSession['default'](container, configuration['default'].sessionServiceName);
+        container.injection('adapter', configuration['default'].sessionServiceName, 'torii:session');
+      }
+    }
+  };
+
+});
+define('torii/initializers/initialize-torii', ['exports', 'torii/bootstrap/torii', 'torii/configuration'], function (exports, bootstrapTorii, configuration) {
+
+  'use strict';
+
+  var initializer = {
+    name: 'torii',
+    initialize: function(container, app){
+      bootstrapTorii['default'](container);
+      app.inject('route', 'torii', 'torii:main');
+    }
+  };
+
+  if (window.DS) {
+    initializer.after = 'store';
+  }
+
+  exports['default'] = initializer;
+
+});
+define('torii/instance-initializers/walk-providers', ['exports', 'torii/configuration'], function (exports, configuration) {
+
+  'use strict';
+
+  exports['default'] = {
+    name: 'torii-walk-providers',
+    initialize: function(appInstance){
+      // Walk all configured providers and eagerly instantiate
+      // them. This gives providers with initialization side effects
+      // like facebook-connect a chance to load up assets.
+      for (var key in  configuration['default'].providers) {
+        if (configuration['default'].providers.hasOwnProperty(key)) {
+          appInstance.container.lookup('torii-provider:'+key);
+        }
+      }
+
+    }
+  };
+
+});
+define('torii/lib/load-initializer', ['exports'], function (exports) {
+
+  'use strict';
+
+  /* global Ember */
+  exports['default'] = function(initializer){
+    Ember.onLoad('Ember.Application', function(Application){
+      Application.initializer(initializer);
+    });
+  }
+
+});
+define('torii/lib/load-instance-initializer', ['exports'], function (exports) {
+
+  'use strict';
+
+  /* global Ember */
+  exports['default'] = function(instanceInitializer){
+    Ember.onLoad('Ember.Application', function(Application){
+      Application.instanceInitializer(instanceInitializer);
+    });
+  }
+
+});
+define('torii/lib/parse-query-string', ['exports'], function (exports) {
+
+  'use strict';
+
+  exports['default'] = Ember.Object.extend({
+    init: function(url, validKeys) {
+      this.url = url;
+      this.validKeys = validKeys;
+    },
+
+    parse: function(){
+      var url       = this.url,
+          validKeys = this.validKeys,
+          data      = {};
+
+      for (var i = 0; i < validKeys.length; i++) {
+        var key = validKeys[i],
+            regex = new RegExp(key + "=([^&#]*)"),
+            match = regex.exec(url);
+        if (match) {
+          data[key] = match[1];
+        }
+      }
+      return data;
+    }
+  });
+
+});
+define('torii/lib/popup-id-serializer', ['exports'], function (exports) {
+
+  'use strict';
+
+  var PopupIdSerializer = {
+    serialize: function(popupId){
+      return "torii-popup:" + popupId;
+    },
+
+    deserialize: function(serializedPopupId){
+      if (!serializedPopupId){
+        return null;
+      }
+
+      var match = serializedPopupId.match(/^(torii-popup:)(.*)/);
+      return match ? match[2] : null;
+    },
+  };
+
+
+  exports['default'] = PopupIdSerializer;
+
+});
+define('torii/lib/query-string', ['exports'], function (exports) {
+
+  'use strict';
+
+  var camelize = Ember.String.camelize,
+      get      = Ember.get;
+
+  function isValue(value){
+    return (value || value === false);
+  }
+
+  function getParamValue(obj, paramName, optional){
+    var camelizedName = camelize(paramName),
+        value         = get(obj, camelizedName);
+
+    if (!optional) {
+      if ( !isValue(value) && isValue(get(obj, paramName))) {
+        throw new Error(
+          'Use camelized versions of url params. (Did not find ' +
+          '"' + camelizedName + '" property but did find ' +
+          '"' + paramName + '".');
+      }
+
+      if (!isValue(value)) {
+        throw new Error(
+          'Missing url param: "'+paramName+'". (Looked for: property named "' +
+          camelizedName + '".'
+        );
+      }
+    }
+
+    return isValue(value) ? encodeURIComponent(value) : undefined;
+  }
+
+  function getOptionalParamValue(obj, paramName){
+    return getParamValue(obj, paramName, true);
+  }
+
+  exports['default'] = Ember.Object.extend({
+    init: function(obj, urlParams, optionalUrlParams){
+      this.obj               = obj;
+      this.urlParams         = Ember.A(urlParams).uniq();
+      this.optionalUrlParams = Ember.A(optionalUrlParams || []).uniq();
+
+      this.optionalUrlParams.forEach(function(param){
+        if (this.urlParams.indexOf(param) > -1) {
+          throw new Error("Required parameters cannot also be optional: '" + param + "'");
+        }
+      }, this);
+    },
+
+    toString: function(){
+      var urlParams         = this.urlParams,
+          optionalUrlParams = this.optionalUrlParams,
+          obj               = this.obj,
+          keyValuePairs     = Ember.A([]);
+
+      urlParams.forEach(function(paramName){
+        var paramValue = getParamValue(obj, paramName);
+
+        keyValuePairs.push( [paramName, paramValue] );
+      });
+
+      optionalUrlParams.forEach(function(paramName){
+        var paramValue = getOptionalParamValue(obj, paramName);
+
+        if (isValue(paramValue)) {
+          keyValuePairs.push( [paramName, paramValue] );
+        }
+      });
+
+      return keyValuePairs.map(function(pair){
+        return pair.join('=');
+      }).join('&');
+    }
+  });
+
+});
+define('torii/lib/required-property', ['exports'], function (exports) {
+
+  'use strict';
+
+  function requiredProperty(){
+    return Ember.computed(function(key){
+      throw new Error("Definition of property "+key+" by a subclass is required.");
+    });
+  }
+
+  exports['default'] = requiredProperty;
+
+});
+define('torii/lib/state-machine', ['exports'], function (exports) {
+
+  'use strict';
+
+  /*
+   * Modification of Stefan Penner's StateMachine.js: https://github.com/stefanpenner/state_machine.js/
+   *
+   * This modification requires Ember.js to be loaded first
+   */
+
+  var a_slice = Array.prototype.slice;
+  var o_keys = Ember.keys;
+
+  function makeArray(entry){
+    if (entry.constructor === Array) {
+      return entry;
+    }else if(entry) {
+      return [entry];
+    }else{
+      return [];
+    }
+  }
+
+  function StateMachine(options){
+    var initialState = options.initialState;
+    this.states = options.states;
+
+    if (!this.states) {
+      throw new Error('StateMachine needs states');
+    }
+
+    this.state  = this.states[initialState];
+
+    if (!this.state) {
+      throw new Error('Missing initial state');
+    }
+
+    this.currentStateName = initialState;
+
+    this._subscriptions = {};
+
+    var beforeTransitions = (options.beforeTransitions ||[]);
+    var afterTransitions  = (options.afterTransitions ||[]);
+    var rule;
+
+    var i, length;
+    for(i = 0, length = beforeTransitions.length; length > i; i++){
+      rule = beforeTransitions[i];
+      this.beforeTransition.call(this, rule, rule.fn);
+    }
+
+    for(i = 0, length = afterTransitions.length; length > i; i++){
+      rule = afterTransitions[i];
+      this.afterTransition.call(this, rule, rule.fn);
+    }
+  }
+
+  var SPLAT = StateMachine.SPLAT = '*';
+
+  StateMachine.transitionTo = function(state){
+    return function(){
+      this.transitionTo(state);
+    };
+  };
+
+  StateMachine.prototype = {
+    states: {},
+    toString: function(){
+      return "<StateMachine currentState:'" + this.currentStateName +"' >";
+    },
+
+    transitionTo: function(nextStateName){
+      if (nextStateName.charAt(0) === '.') {
+        var splits = this.currentStateName.split('.').slice(0,-1);
+
+        // maybe all states should have an implicit leading dot (kinda like dns)
+        if (0 < splits.length){
+          nextStateName = splits.join('.') + nextStateName;
+        } else {
+          nextStateName = nextStateName.substring(1);
+        }
+      }
+
+      var state = this.states[nextStateName],
+      stateName = this.currentStateName;
+
+      if (!state) {
+        throw new Error('Unknown State: `' + nextStateName + '`');
+      }
+      this.willTransition(stateName, nextStateName);
+
+      this.state = state;
+
+      this.currentStateName = nextStateName;
+      this.didTransition(stateName, nextStateName);
+    },
+
+    beforeTransition: function(options, fn) {
+      this._transition('willTransition', options, fn);
+    },
+
+    afterTransition: function(options, fn) {
+      this._transition('didTransition', options, fn);
+    },
+
+    _transition: function(event, filter, fn) {
+      var from = filter.from || SPLAT,
+        to = filter.to || SPLAT,
+        context = this,
+        matchingTo, matchingFrom,
+        toSplatOffset, fromSplatOffset,
+        negatedMatchingTo, negatedMatchingFrom;
+
+      if (to.indexOf('!') === 0) {
+        matchingTo = to.substr(1);
+        negatedMatchingTo = true;
+      } else {
+        matchingTo = to;
+        negatedMatchingTo = false;
+      }
+
+      if (from.indexOf('!') === 0) {
+        matchingFrom = from.substr(1);
+        negatedMatchingFrom = true;
+      } else {
+        matchingFrom = from;
+        negatedMatchingFrom = false;
+      }
+
+      fromSplatOffset = matchingFrom.indexOf(SPLAT);
+      toSplatOffset = matchingTo.indexOf(SPLAT);
+
+      if (fromSplatOffset >= 0) {
+        matchingFrom = matchingFrom.substring(fromSplatOffset, 0);
+      }
+
+      if (toSplatOffset >= 0) {
+        matchingTo = matchingTo.substring(toSplatOffset, 0);
+      }
+
+      this.on(event, function(currentFrom, currentTo) {
+        var currentMatcherTo = currentTo,
+          currentMatcherFrom = currentFrom,
+          toMatches, fromMatches;
+
+        if (fromSplatOffset >= 0){
+          currentMatcherFrom = currentFrom.substring(fromSplatOffset, 0);
+        }
+
+        if (toSplatOffset >= 0){
+          currentMatcherTo = currentTo.substring(toSplatOffset, 0);
+        }
+
+        toMatches = (currentMatcherTo === matchingTo) !== negatedMatchingTo;
+        fromMatches = (currentMatcherFrom === matchingFrom) !== negatedMatchingFrom;
+
+        if (toMatches && fromMatches) {
+          fn.call(this, currentFrom, currentTo);
+        }
+      });
+    },
+
+    willTransition: function(from, to) {
+      this._notify('willTransition', from, to);
+    },
+
+    didTransition: function(from, to) {
+      this._notify('didTransition', from, to);
+    },
+
+    _notify: function(name, from, to) {
+      var subscriptions = (this._subscriptions[name] || []);
+
+      for( var i = 0, length = subscriptions.length; i < length; i++){
+        subscriptions[i].call(this, from, to);
+      }
+    },
+
+    on: function(event, fn) {
+      this._subscriptions[event] = this._subscriptions[event] || [];
+      this._subscriptions[event].push(fn);
+    },
+
+    off: function(event, fn) {
+      var idx = this._subscriptions[event].indexOf(fn);
+
+      if (fn){
+        if (idx) {
+          this._subscriptions[event].splice(idx, 1);
+        }
+      }else {
+        this._subscriptions[event] = null;
+      }
+    },
+
+    send: function(eventName) {
+      var event = this.state[eventName];
+      var args = a_slice.call(arguments, 1);
+
+      if (event) {
+        return event.apply(this, args);
+      } else {
+        this.unhandledEvent(eventName);
+      }
+    },
+
+    trySend: function(eventName) {
+      var event = this.state[eventName];
+      var args = a_slice.call(arguments,1);
+
+      if (event) {
+        return event.apply(this, args);
+      }
+    },
+
+    event: function(eventName, callback){
+      var states = this.states;
+
+      var eventApi = {
+        transition: function() {
+          var length = arguments.length,
+          first = arguments[0],
+          second = arguments[1],
+          events = normalizeEvents(eventName, first, second);
+
+          o_keys(events).forEach(function(from){
+            var to = events[from];
+            compileEvent(states, eventName, from, to, StateMachine.transitionTo(to));
+          });
+        }
+      };
+
+      callback.call(eventApi);
+    },
+
+    unhandledEvent: function(event){
+      var currentStateName = this.currentStateName,
+      message = "Unknown Event: `" + event + "` for: " + this.toString();
+
+      throw new Error(message);
+    }
+  };
+
+  function normalizeEvents(eventName, first, second){
+    var events;
+    if (!first) { throw new Error('invalid Transition'); }
+
+    if (second) {
+      var froms = first, to = second;
+      events = expandArrayEvents(froms, to);
+    } else {
+      if (first.constructor === Object) {
+        events = first;
+      } else {
+        throw new Error('something went wrong');
+      }
+    }
+
+    return events;
+  }
+
+  function expandArrayEvents(froms, to){
+    return  makeArray(froms).reduce(function(events, from){
+       events[from] = to;
+       return events;
+     }, {});
+  }
+
+  function compileEvent(states, eventName, from, to, fn){
+    var state = states[from];
+
+    if (from && to && state) {
+      states[from][eventName] = fn;
+    } else {
+      var message = "invalid transition state: " + (state && state.currentStateName) + " from: " + from+ " to: " + to ;
+      throw new Error(message);
+    }
+  }
+
+  exports['default'] = StateMachine;
+
+});
+define('torii/lib/uuid-generator', ['exports'], function (exports) {
+
+  'use strict';
+
+  var UUIDGenerator = {
+    generate: function() {
+      var d = new Date().getTime();
+      var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = (d + Math.random()*16)%16 | 0;
+        d = Math.floor(d/16);
+        return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+      });
+      return uuid;
+    },
+
+
+  };
+
+  exports['default'] = UUIDGenerator;
+
+});
+define('torii/load-initializers', ['exports', 'torii/lib/load-initializer', 'torii/lib/load-instance-initializer', 'torii/initializers/initialize-torii', 'torii/initializers/initialize-torii-callback', 'torii/initializers/initialize-torii-session', 'torii/instance-initializers/walk-providers'], function (exports, loadInitializer, loadInstanceInitializer, initializeTorii, initializeToriiCallback, initializeToriiSession, walkProviders) {
+
+  'use strict';
+
+  exports['default'] = function(){
+    loadInitializer['default'](initializeToriiCallback['default']);
+    loadInitializer['default'](initializeTorii['default']);
+    loadInitializer['default'](initializeToriiSession['default']);
+    loadInstanceInitializer['default'](walkProviders['default']);
+  }
+
+});
+define('torii/providers/azure-ad-oauth2', ['exports', 'torii/providers/oauth2-code', 'torii/configuration'], function (exports, Oauth2, configuration) {
+
+  'use strict';
+
+  var computed = Ember.computed;
+
+  /**
+   * This class implements authentication against AzureAD
+   * using the OAuth2 authorization flow in a popup window.
+   * @class
+   */
+  var AzureAdOauth2 = Oauth2['default'].extend({
+    name: 'azure-ad-oauth2',
+
+    baseUrl: computed(function() {
+      return 'https://login.windows.net/' + this.get('tennantId') + '/oauth2/authorize';
+    }),
+
+    tennantId: configuration.configurable('tennantId', 'common'),
+
+    // additional url params that this provider requires
+    requiredUrlParams: ['state', 'api-version', 'client_id'],
+
+    optionalUrlParams: ['scope', 'nonce', 'response_mode'],
+
+    responseMode: configuration.configurable('responseMode', null),
+
+    responseParams: computed(function () {
+      return [ this.get('responseType') ];
+    }),
+
+    state: 'STATE',
+
+    apiVersion: '1.0',
+
+    responseType: configuration.configurable('responseType', 'code'),
+
+    redirectUri: configuration.configurable('redirectUri', function(){
+      // A hack that allows redirectUri to be configurable
+      // but default to the superclass
+      return this._super();
+    })
+  });
+
+  exports['default'] = AzureAdOauth2;
+
+});
+define('torii/providers/base', ['exports', 'torii/lib/required-property'], function (exports, requiredProperty) {
+
+  'use strict';
+
+  var computed = Ember.computed;
+
+  /**
+   * The base class for all torii providers
+   * @class BaseProvider
+   */
+  var Base = Ember.Object.extend({
+
+   /**
+    * The name of the provider
+    * @property {string} name
+    */
+    name: requiredProperty['default'](),
+
+    /**
+     * The name of the configuration property
+     * that holds config information for this provider.
+     * @property {string} configNamespace
+     */
+    configNamespace: computed('name', function(){
+      return 'providers.'+this.get('name');
+    })
+
+  });
+
+  exports['default'] = Base;
+
+});
+define('torii/providers/edmodo-connect', ['exports', 'torii/providers/oauth2-bearer', 'torii/configuration'], function (exports, Oauth2Bearer, configuration) {
+
+  'use strict';
+
+  exports['default'] = Oauth2Bearer['default'].extend({
+    name: 'edmodo-connect',
+    baseUrl: 'https://api.edmodo.com/oauth/authorize',
+    responseParams: ['access_token'],
+
+    /* Configurable parameters */
+    redirectUri: configuration.configurable('redirectUri'),
+    // See https://developers.edmodo.com/edmodo-connect/docs/#connecting-your-application for the full list of scopes
+    scope: configuration.configurable('scope', 'basic')
+  });
+
+});
+define('torii/providers/facebook-connect', ['exports', 'torii/providers/base', 'torii/configuration'], function (exports, Provider, configuration) {
+
+  'use strict';
+
+  /* global FB, $ */
+
+  /**
+   * This class implements authentication against facebook
+   * connect using the Facebook SDK.
+   */
+
+  var on = Ember.on;
+  var fbPromise;
+
+  function fbLoad(settings){
+    if (fbPromise) { return fbPromise; }
+
+    var original = window.fbAsyncInit;
+    var locale = settings.locale;
+    delete settings.locale;
+    fbPromise = new Ember.RSVP.Promise(function(resolve, reject){
+      window.fbAsyncInit = function(){
+        FB.init(settings);
+        Ember.run(null, resolve);
+      };
+      $.getScript('//connect.facebook.net/' + locale + '/sdk.js');
+    }).then(function(){
+      window.fbAsyncInit = original;
+      if (window.fbAsyncInit) {
+        window.fbAsyncInit.hasRun = true;
+        window.fbAsyncInit();
+      }
+    });
+
+    return fbPromise;
+  }
+
+  function fbLogin(scope){
+    return new Ember.RSVP.Promise(function(resolve, reject){
+      FB.login(function(response){
+        if (response.authResponse) {
+          Ember.run(null, resolve, response.authResponse);
+        } else {
+          Ember.run(null, reject, response.status);
+        }
+      }, { scope: scope });
+    });
+  }
+
+  function fbNormalize(response){
+    return {
+      userId: response.userID,
+      accessToken: response.accessToken,
+      expiresIn: response.expiresIn
+    };
+  }
+
+  var Facebook = Provider['default'].extend({
+
+    // Facebook connect SDK settings:
+    name:  'facebook-connect',
+    scope: configuration.configurable('scope', 'email'),
+    appId: configuration.configurable('appId'),
+    version: configuration.configurable('version', 'v2.2'),
+    xfbml: configuration.configurable('xfbml', false),
+    channelUrl: configuration.configurable('channelUrl', null),
+    locale: configuration.configurable('locale', 'en_US'),
+
+    // API:
+    //
+    open: function(){
+      var scope = this.get('scope');
+
+      return fbLoad( this.settings() )
+        .then(function(){
+          return fbLogin(scope);
+        })
+        .then(fbNormalize);
+    },
+
+    settings: function(){
+      return {
+        status: true,
+        cookie: true,
+        xfbml: this.get('xfbml'),
+        version: this.get('version'),
+        appId: this.get('appId'),
+        channelUrl: this.get('channelUrl'),
+        locale: this.get('locale')
+      };
+    },
+
+    // Load Facebook's script eagerly, so that the window.open
+    // in FB.login will be part of the same JS frame as the
+    // click itself.
+    loadFbLogin: on('init', function(){
+      fbLoad( this.settings() );
+    })
+
+  });
+
+  exports['default'] = Facebook;
+
+});
+define('torii/providers/facebook-oauth2', ['exports', 'torii/configuration', 'torii/providers/oauth2-code'], function (exports, configuration, Oauth2) {
+
+  'use strict';
+
+  exports['default'] = Oauth2['default'].extend({
+    name:    'facebook-oauth2',
+    baseUrl: 'https://www.facebook.com/dialog/oauth',
+
+    // Additional url params that this provider requires
+    requiredUrlParams: ['display'],
+
+    responseParams: ['code'],
+
+    scope:        configuration.configurable('scope', 'email'),
+
+    display: 'popup',
+    redirectUri: configuration.configurable('redirectUri', function(){
+      // A hack that allows redirectUri to be configurable
+      // but default to the superclass
+      return this._super();
+    }),
+
+    open: function() {
+      return this._super().then(function(authData){
+        if (authData.authorizationCode && authData.authorizationCode === '200') {
+          // indication that the user hit 'cancel', not 'ok'
+          throw new Error('User canceled authorization');
+        }
+
+        return authData;
+      });
+    }
+  });
+
+});
+define('torii/providers/github-oauth2', ['exports', 'torii/providers/oauth2-code', 'torii/configuration'], function (exports, Oauth2, configuration) {
+
+  'use strict';
+
+  var GithubOauth2 = Oauth2['default'].extend({
+    name:       'github-oauth2',
+    baseUrl:    'https://github.com/login/oauth/authorize',
+
+    // additional url params that this provider requires
+    requiredUrlParams: ['state'],
+
+    responseParams: ['code'],
+
+    state: 'STATE',
+
+    redirectUri: configuration.configurable('redirectUri', function(){
+      // A hack that allows redirectUri to be configurable
+      // but default to the superclass
+      return this._super();
+    })
+  });
+
+  exports['default'] = GithubOauth2;
+
+});
+define('torii/providers/google-oauth2-bearer', ['exports', 'torii/providers/oauth2-bearer', 'torii/configuration'], function (exports, Oauth2Bearer, configuration) {
+
+  'use strict';
+
+  /**
+   * This class implements authentication against google
+   * using the client-side OAuth2 authorization flow in a popup window.
+   */
+
+  var GoogleOauth2Bearer = Oauth2Bearer['default'].extend({
+
+    name:    'google-oauth2-bearer',
+    baseUrl: 'https://accounts.google.com/o/oauth2/auth',
+
+    // additional params that this provider requires
+    requiredUrlParams: ['state'],
+    optionalUrlParams: ['scope', 'request_visible_actions'],
+
+    requestVisibleActions: configuration.configurable('requestVisibleActions', ''),
+
+    responseParams: ['access_token'],
+
+    scope: configuration.configurable('scope', 'email'),
+
+    state: configuration.configurable('state', 'STATE'),
+
+    redirectUri: configuration.configurable('redirectUri',
+                              'http://localhost:8000/oauth2callback')
+  });
+
+  exports['default'] = GoogleOauth2Bearer;
+
+});
+define('torii/providers/google-oauth2', ['exports', 'torii/providers/oauth2-code', 'torii/configuration'], function (exports, Oauth2, configuration) {
+
+  'use strict';
+
+  /**
+   * This class implements authentication against google
+   * using the OAuth2 authorization flow in a popup window.
+   */
+
+  var GoogleOauth2 = Oauth2['default'].extend({
+
+    name:    'google-oauth2',
+    baseUrl: 'https://accounts.google.com/o/oauth2/auth',
+
+    // additional params that this provider requires
+    requiredUrlParams: ['state'],
+    optionalUrlParams: ['scope', 'request_visible_actions', 'access_type', 'approval_prompt', 'hd'],
+
+    requestVisibleActions: configuration.configurable('requestVisibleActions', ''),
+
+    accessType: configuration.configurable('accessType', ''),
+
+    responseParams: ['code'],
+
+    scope: configuration.configurable('scope', 'email'),
+
+    state: configuration.configurable('state', 'STATE'),
+
+    approvalPrompt: configuration.configurable('approvalPrompt', 'auto'),
+
+    redirectUri: configuration.configurable('redirectUri',
+                              'http://localhost:8000/oauth2callback'),
+
+    hd: configuration.configurable('hd', '')
+  });
+
+  exports['default'] = GoogleOauth2;
+
+});
+define('torii/providers/linked-in-oauth2', ['exports', 'torii/providers/oauth2-code', 'torii/configuration'], function (exports, Oauth2, configuration) {
+
+  'use strict';
+
+  var LinkedInOauth2 = Oauth2['default'].extend({
+    name:       'linked-in-oauth2',
+    baseUrl:    'https://www.linkedin.com/uas/oauth2/authorization',
+
+    // additional url params that this provider requires
+    requiredUrlParams: ['state'],
+
+    responseParams: ['code'],
+
+    state: 'STATE',
+
+    redirectUri: configuration.configurable('redirectUri', function(){
+      // A hack that allows redirectUri to be configurable
+      // but default to the superclass
+      return this._super();
+    })
+
+  });
+
+  exports['default'] = LinkedInOauth2;
+
+});
+define('torii/providers/oauth1', ['exports', 'torii/providers/base', 'torii/configuration', 'torii/lib/query-string', 'torii/lib/required-property'], function (exports, Provider, configuration, QueryString, requiredProperty) {
+
+  'use strict';
+
+  /*
+   * This class implements authentication against an API
+   * using the OAuth1.0a request token flow in a popup window.
+   */
+
+  function currentUrl(){
+    return [window.location.protocol,
+            "//",
+            window.location.host,
+            window.location.pathname].join('');
+  }
+
+  var Oauth1 = Provider['default'].extend({
+    name: 'oauth1',
+
+    requestTokenUri: configuration.configurable('requestTokenUri'),
+
+    buildRequestTokenUrl: function(){
+      var requestTokenUri = this.get('requestTokenUri');
+      return requestTokenUri;
+    },
+
+    open: function(){
+      var name        = this.get('name'),
+          url         = this.buildRequestTokenUrl();
+
+      return this.get('popup').open(url, ['code']).then(function(authData){
+        authData.provider = name;
+        return authData;
+      });
+    }
+  });
+
+  exports['default'] = Oauth1;
+
+});
+define('torii/providers/oauth2-bearer', ['exports', 'torii/providers/oauth2-code'], function (exports, Provider) {
+
+  'use strict';
+
+  var Oauth2Bearer = Provider['default'].extend({
+    responseType: 'token',
+
+    /**
+     * @method open
+     * @return {Promise<object>} If the authorization attempt is a success,
+     * the promise will resolve an object containing the following keys:
+     *   - authorizationToken: The `token` from the 3rd-party provider
+     *   - provider: The name of the provider (i.e., google-oauth2)
+     *   - redirectUri: The redirect uri (some server-side exchange flows require this)
+     * If there was an error or the user either canceled the authorization or
+     * closed the popup window, the promise rejects.
+     */
+    open: function(){
+      var name        = this.get('name'),
+          url         = this.buildUrl(),
+          redirectUri = this.get('redirectUri'),
+          responseParams = this.get('responseParams');
+
+      return this.get('popup').open(url, responseParams).then(function(authData){
+        var missingResponseParams = [];
+
+        responseParams.forEach(function(param){
+          if (authData[param] === undefined) {
+            missingResponseParams.push(param);
+          }
+        });
+
+        if (missingResponseParams.length){
+          throw new Error("The response from the provider is missing " +
+                "these required response params: " + responseParams.join(', '));
+        }
+
+        return {
+          authorizationToken: authData,
+          provider: name,
+          redirectUri: redirectUri
+        };
+      });
+    }
+  });
+
+  exports['default'] = Oauth2Bearer;
+
+});
+define('torii/providers/oauth2-code', ['exports', 'torii/providers/base', 'torii/configuration', 'torii/lib/query-string', 'torii/lib/required-property'], function (exports, Provider, configuration, QueryString, requiredProperty) {
+
+  'use strict';
+
+  var computed = Ember.computed;
+
+  function currentUrl(){
+    return [window.location.protocol,
+            "//",
+            window.location.host,
+            window.location.pathname].join('');
+  }
+
+  /**
+   * Implements authorization against an OAuth2 API
+   * using the OAuth2 authorization flow in a popup window.
+   *
+   * Subclasses should extend this class and define the following properties:
+   *   - requiredUrlParams: If there are additional required params
+   *   - optionalUrlParams: If there are additional optional params
+   *   - name: The name used in the configuration `providers` key
+   *   - baseUrl: The base url for OAuth2 code-based flow at the 3rd-party
+   *
+   *   If there are any additional required or optional url params,
+   *   include default values for them (if appropriate).
+   *
+   * @class Oauth2Provider
+   */
+  var Oauth2 = Provider['default'].extend({
+    concatenatedProperties: ['requiredUrlParams','optionalUrlParams'],
+
+    /**
+     * The parameters that must be included as query params in the 3rd-party provider's url that we build.
+     * These properties are in the format that should be in the URL (i.e.,
+     * usually underscored), but they are looked up as camelCased properties
+     * on the instance of this provider. For example, if the 'client_id' is
+     * a required url param, when building the URL we look up the value of
+     * the 'clientId' (camel-cased) property and put it in the URL as
+     * 'client_id=' + this.get('clientId')
+     * Subclasses can add additional required url params.
+     *
+     * @property {array} requiredUrlParams
+     */
+    requiredUrlParams: ['response_type', 'client_id', 'redirect_uri'],
+
+    /**
+     * Parameters that may be included in the 3rd-party provider's url that we build.
+     * Subclasses can add additional optional url params.
+     *
+     * @property {array} optionalUrlParams
+     */
+    optionalUrlParams: ['scope'],
+
+    /**
+     * The base url for the 3rd-party provider's OAuth2 flow (example: 'https://github.com/login/oauth/authorize')
+     *
+     * @property {string} baseUrl
+     */
+    baseUrl:      requiredProperty['default'](),
+
+    /**
+     * The apiKey (sometimes called app id) that identifies the registered application at the 3rd-party provider
+     *
+     * @property {string} apiKey
+     */
+    apiKey:       configuration.configurable('apiKey'),
+
+    scope:        configuration.configurable('scope', null),
+    clientId:     configuration.configurable('clientId', function () { return this.get('apiKey'); }),
+
+    /**
+     * The oauth response type we expect from the third party provider. Hardcoded to 'code' for oauth2-code flows
+     * @property {string} responseType
+     */
+    responseType: 'code',
+
+   /**
+    * List of parameters that we expect
+    * to see in the query params that the 3rd-party provider appends to
+    * our `redirectUri` after the user confirms/denies authorization.
+    * If any of these parameters are missing, the OAuth attempt is considered
+    * to have failed (usually this is due to the user hitting the 'cancel' button)
+    *
+    * @property {array} responseParams
+    */
+    responseParams: requiredProperty['default'](),
+
+    redirectUri: computed(function(){
+      return currentUrl();
+    }),
+
+    buildQueryString: function(){
+      var requiredParams = this.get('requiredUrlParams'),
+          optionalParams = this.get('optionalUrlParams');
+
+      var qs = new QueryString['default'](this, requiredParams, optionalParams);
+      return qs.toString();
+    },
+
+    buildUrl: function(){
+      var base = this.get('baseUrl'),
+          qs   = this.buildQueryString();
+
+      return [base, qs].join('?');
+    },
+
+    /**
+     * @method open
+     * @return {Promise<object>} If the authorization attempt is a success,
+     * the promise will resolve an object containing the following keys:
+     *   - authorizationCode: The `code` from the 3rd-party provider
+     *   - provider: The name of the provider (i.e., google-oauth2)
+     *   - redirectUri: The redirect uri (some server-side exchange flows require this)
+     * If there was an error or the user either canceled the authorization or
+     * closed the popup window, the promise rejects.
+     */
+    open: function(){
+      var name        = this.get('name'),
+          url         = this.buildUrl(),
+          redirectUri = this.get('redirectUri'),
+          responseParams = this.get('responseParams'),
+          responseType = this.get('responseType');
+
+      return this.get('popup').open(url, responseParams).then(function(authData){
+        var missingResponseParams = [];
+
+        responseParams.forEach(function(param){
+          if (authData[param] === undefined) {
+            missingResponseParams.push(param);
+          }
+        });
+
+        if (missingResponseParams.length){
+          throw new Error("The response from the provider is missing " +
+                "these required response params: " + responseParams.join(', '));
+        }
+
+        return {
+          authorizationCode: authData[responseType],
+          provider: name,
+          redirectUri: redirectUri
+        };
+      });
+    }
+  });
+
+  exports['default'] = Oauth2;
+
+});
+define('torii/providers/stripe-connect', ['exports', 'torii/providers/oauth2-code', 'torii/configuration'], function (exports, Oauth2, configuration) {
+
+  'use strict';
+
+  exports['default'] = Oauth2['default'].extend({
+    name:       'stripe-connect',
+    baseUrl:    'https://connect.stripe.com/oauth/authorize',
+
+    // additional url params that this provider requires
+    requiredUrlParams: [],
+    optionalUrlParams: ['stripe_landing', 'always_prompt'],
+
+    responseParams: ['code'],
+
+    scope: configuration.configurable('scope', 'read_write'),
+    stripeLanding: configuration.configurable('stripeLanding', ''),
+    alwaysPrompt: configuration.configurable('alwaysPrompt', 'false'),
+
+    redirectUri: configuration.configurable('redirectUri', function() {
+      // A hack that allows redirectUri to be configurable
+      // but default to the superclass
+      return this._super();
+    })
+  });
+
+});
+define('torii/providers/twitter-oauth1', ['exports', 'torii/providers/oauth1'], function (exports, Oauth1Provider) {
+
+  'use strict';
+
+  exports['default'] = Oauth1Provider['default'].extend({
+    name: 'twitter'
+  });
+
+});
+define('torii/redirect-handler', ['exports', 'torii/lib/popup-id-serializer'], function (exports, PopupIdSerializer) {
+
+  'use strict';
+
+  /**
+   * RedirectHandler will attempt to find
+   * these keys in the URL. If found,
+   * this is an indication to Torii that
+   * the Ember app has loaded inside a popup
+   * and should postMessage this data to window.opener
+   */
+
+  var RedirectHandler = Ember.Object.extend({
+
+    init: function(windowObject){
+      this.windowObject = windowObject;
+    },
+
+    run: function(){
+      var windowObject = this.windowObject;
+
+      return new Ember.RSVP.Promise(function(resolve, reject){
+        var popupId = PopupIdSerializer['default'].deserialize(windowObject.name);
+
+        if (popupId){
+          var key = PopupIdSerializer['default'].serialize(popupId);
+          var url = windowObject.location.toString();
+
+          windowObject.localStorage.setItem(key, url);
+
+          windowObject.close();
+        } else{
+          reject('Not a torii popup');
+        }
+      });
+    }
+
+  });
+
+  RedirectHandler.reopenClass({
+    // untested
+    handle: function(windowObject){
+      var handler = new RedirectHandler(windowObject);
+      return handler.run();
+    }
+  });
+
+  exports['default'] = RedirectHandler;
+
+});
+define('torii/services/popup', ['exports', 'torii/lib/parse-query-string', 'torii/lib/uuid-generator', 'torii/lib/popup-id-serializer'], function (exports, ParseQueryString, UUIDGenerator, PopupIdSerializer) {
+
+  'use strict';
+
+  var on = Ember.on;
+
+  function stringifyOptions(options){
+    var optionsStrings = [];
+    for (var key in options) {
+      if (options.hasOwnProperty(key)) {
+        var value;
+        switch (options[key]) {
+          case true:
+            value = '1';
+            break;
+          case false:
+            value = '0';
+            break;
+          default:
+            value = options[key];
+        }
+        optionsStrings.push(
+          key+"="+value
+        );
+      }
+    }
+    return optionsStrings.join(',');
+  }
+
+  function prepareOptions(options){
+    var width = options.width || 500,
+        height = options.height || 500;
+    return Ember.$.extend({
+      left: ((screen.width / 2) - (width / 2)),
+      top: ((screen.height / 2) - (height / 2)),
+      width: width,
+      height: height
+    }, options);
+  }
+
+  function parseMessage(url, keys){
+    var parser = new ParseQueryString['default'](url, keys),
+        data = parser.parse();
+    return data;
+  }
+
+  var Popup = Ember.Object.extend(Ember.Evented, {
+
+    init: function(options){
+      this._super.apply(this, arguments);
+      options = options || {};
+      this.popupIdGenerator = options.popupIdGenerator || UUIDGenerator['default'];
+    },
+
+    // Open a popup window. Returns a promise that resolves or rejects
+    // accoring to if the popup is redirected with arguments in the URL.
+    //
+    // For example, an OAuth2 request:
+    //
+    // popup.open('http://some-oauth.com', ['code']).then(function(data){
+    //   // resolves with data.code, as from http://app.com?code=13124
+    // });
+    //
+    open: function(url, keys, options){
+      var service   = this,
+          lastPopup = this.popup;
+
+
+      return new Ember.RSVP.Promise(function(resolve, reject){
+        if (lastPopup) {
+          service.close();
+        }
+
+        var popupId = service.popupIdGenerator.generate();
+
+        var optionsString = stringifyOptions(prepareOptions(options || {}));
+        var windowName = PopupIdSerializer['default'].serialize(popupId);
+        service.popup = window.open(url, windowName, optionsString);
+
+        if (service.popup && !service.popup.closed) {
+          service.popup.focus();
+        } else {
+          reject(new Error(
+            'Popup could not open or was closed'));
+          return;
+        }
+
+        service.one('didClose', function(){
+          // If we don't receive a message before the timeout, we fail. Normally,
+          // the message will be received and the window will close immediately.
+          service.timeout = Ember.run.later(service, function() {
+            reject(new Error("Popup was closed, authorization was denied, or a authentication message otherwise not received before the window closed."));
+          }, 100);
+        });
+
+        Ember.$(window).on('storage.torii', function(event){
+          var storageEvent = event.originalEvent;
+
+          var popupIdFromEvent = PopupIdSerializer['default'].deserialize(storageEvent.key);
+          if (popupId === popupIdFromEvent){
+            var data = parseMessage(storageEvent.newValue, keys);
+            localStorage.removeItem(storageEvent.key);
+            Ember.run(function() {
+              resolve(data);
+            });
+          }
+        });
+
+        service.schedulePolling();
+
+      }).finally(function(){
+        // didClose will reject this same promise, but it has already resolved.
+        service.close();
+        service.clearTimeout();
+        Ember.$(window).off('storage.torii');
+      });
+    },
+
+    close: function(){
+      if (this.popup) {
+        this.popup = null;
+        this.trigger('didClose');
+      }
+    },
+
+    pollPopup: function(){
+      if (!this.popup) {
+        return;
+      }
+      if (this.popup.closed) {
+        this.trigger('didClose');
+      }
+    },
+
+    schedulePolling: function(){
+      this.polling = Ember.run.later(this, function(){
+        this.pollPopup();
+        this.schedulePolling();
+      }, 35);
+    },
+
+    // Clear the timeout, in case it hasn't fired.
+    clearTimeout: function(){
+      Ember.run.cancel(this.timeout);
+      this.timeout = null;
+    },
+
+    stopPolling: on('didClose', function(){
+      Ember.run.cancel(this.polling);
+    }),
+
+  });
+
+  exports['default'] = Popup;
+
+});
+define('torii/session', ['exports', 'torii/session/state-machine'], function (exports, createStateMachine) {
+
+  'use strict';
+
+  var computed = Ember.computed;
+  var on = Ember.on;
+
+  function lookupAdapter(container, authenticationType){
+    var adapter = container.lookup('torii-adapter:'+authenticationType);
+    if (!adapter) {
+      adapter = container.lookup('torii-adapter:application');
+    }
+    return adapter;
+  }
+
+  var Session = Ember.ObjectProxy.extend({
+    state: null,
+
+    stateMachine: computed(function(){
+      return createStateMachine['default'](this);
+    }),
+
+    setupStateProxy: on('init', function(){
+      var sm    = this.get('stateMachine'),
+          proxy = this;
+      sm.on('didTransition', function(){
+        proxy.set('content', sm.state);
+        proxy.set('currentStateName', sm.currentStateName);
+      });
+    }),
+
+    // Make these properties one-way.
+    setUnknownProperty: Ember.K,
+
+    open: function(provider, options){
+      var container = this.container,
+          torii     = this.get('torii'),
+          sm        = this.get('stateMachine');
+
+      return new Ember.RSVP.Promise(function(resolve){
+        sm.send('startOpen');
+        resolve();
+      }).then(function(){
+        return torii.open(provider, options);
+      }).then(function(authorization){
+        var adapter = lookupAdapter(
+          container, provider
+        );
+
+        return adapter.open(authorization);
+      }).then(function(user){
+        sm.send('finishOpen', user);
+        return user;
+      }).catch(function(error){
+        sm.send('failOpen', error);
+        return Ember.RSVP.reject(error);
+      });
+    },
+
+    fetch: function(provider, options){
+      var container = this.container,
+          sm        = this.get('stateMachine');
+
+      return new Ember.RSVP.Promise(function(resolve){
+        sm.send('startFetch');
+        resolve();
+      }).then(function(){
+        var adapter = lookupAdapter(
+          container, provider
+        );
+
+        return adapter.fetch(options);
+      }).then(function(data){
+        sm.send('finishFetch', data);
+        return;
+      }).catch(function(error){
+        sm.send('failFetch', error);
+        return Ember.RSVP.reject(error);
+      });
+    },
+
+    close: function(provider, options){
+      var container = this.container,
+          sm        = this.get('stateMachine');
+
+      return new Ember.RSVP.Promise(function(resolve){
+        sm.send('startClose');
+        resolve();
+      }).then(function(){
+        var adapter = lookupAdapter(container, provider);
+        return adapter.close(options);
+      }).then(function(){
+        sm.send('finishClose');
+      }).catch(function(error){
+        sm.send('failClose', error);
+        return Ember.RSVP.reject(error);
+      });
+    }
+
+  });
+
+  exports['default'] = Session;
+
+});
+define('torii/session/state-machine', ['exports', 'torii/lib/state-machine'], function (exports, StateMachine) {
+
+  'use strict';
+
+  var transitionTo = StateMachine['default'].transitionTo;
+
+  function copyProperties(data, target) {
+    for (var key in data) {
+      if (data.hasOwnProperty(key)) {
+        target[key] = data[key];
+      }
+    }
+  }
+
+  function transitionToClearing(target, propertiesToClear) {
+    return function(){
+      for (var i;i<propertiesToClear.length;i++) {
+        this[propertiesToClear[i]] = null;
+      }
+      this.transitionTo(target);
+    };
+  }
+
+  exports['default'] = function(session){
+    var sm = new StateMachine['default']({
+      initialState: 'unauthenticated',
+
+      states: {
+        unauthenticated: {
+          errorMessage: null,
+          isAuthenticated: false,
+          // Actions
+          startOpen: transitionToClearing('opening', ['errorMessage']),
+          startFetch: transitionToClearing('fetching', ['errorMessage'])
+        },
+        authenticated: {
+          // Properties
+          currentUser: null,
+          isAuthenticated: true,
+          startClose: transitionTo('closing')
+        },
+        opening: {
+          isWorking: true,
+          isOpening: true,
+          // Actions
+          finishOpen: function(data){
+            copyProperties(data, this.states['authenticated']);
+            this.transitionTo('authenticated');
+          },
+          failOpen: function(errorMessage){
+            this.states['unauthenticated'].errorMessage = errorMessage;
+            this.transitionTo('unauthenticated');
+          }
+        },
+        fetching: {
+          isWorking: true,
+          isFetching: true,
+          // Actions
+          finishFetch: function(data){
+            copyProperties(data, this.states['authenticated']);
+            this.transitionTo('authenticated');
+          },
+          failFetch: function(errorMessage){
+            this.states['unauthenticated'].errorMessage = errorMessage;
+            this.transitionTo('unauthenticated');
+          }
+        },
+        closing: {
+          isWorking: true,
+          isClosing: true,
+          isAuthenticated: true,
+          // Actions
+          finishClose: function(){
+            this.transitionTo('unauthenticated');
+          },
+          failClose: function(errorMessage){
+            this.states['unauthenticated'].errorMessage = errorMessage;
+            this.transitionTo('unauthenticated');
+          }
+        }
+      }
+    });
+    sm.session = session;
+    return sm;
+  }
+
+});
+define('torii/torii', ['exports'], function (exports) {
+
+  'use strict';
+
+  function lookupProvider(container, providerName){
+    return container.lookup('torii-provider:'+providerName);
+  }
+
+  function proxyToProvider(methodName, requireMethod){
+    return function(providerName, options){
+      var container = this.container;
+      var provider = lookupProvider(container, providerName);
+      if (!provider) {
+        throw new Error("Expected a provider named '"+providerName+"' " +
+                        ", did you forget to register it?");
+      }
+
+      if (!provider[methodName]) {
+        if (requireMethod) {
+          throw new Error("Expected provider '"+providerName+"' to define " +
+                          "the '"+methodName+"' method.");
+        } else {
+          return Ember.RSVP.Promise.resolve({});
+        }
+      }
+      return new Ember.RSVP.Promise(function(resolve, reject){
+        resolve( provider[methodName](options) );
+      });
+    };
+  }
+
+  /**
+   * Torii is an engine for authenticating against various
+   * providers. For example, you can open a session with
+   * Linked In via Oauth2 and authorization codes by doing
+   * the following:
+   *
+   *     Torii.open('linked-in-oauth2').then(function(authData){
+   *       console.log(authData.authorizationCode);
+   *     });
+   *
+   * For traditional authentication flows, you will often use
+   * Torii via the Torii.Session API.
+   *
+   * @class Torii
+   */
+  var Torii = Ember.Object.extend({
+
+    /**
+     * Open an authorization against an API. A promise resolving
+     * with an authentication response object is returned. These
+     * response objects,  are found in the "torii/authentications"
+     * namespace.
+     *
+     * @method open
+     * @param {String} providerName The provider to open
+     * @return {Ember.RSVP.Promise} Promise resolving to an authentication object
+     */
+    open:  proxyToProvider('open', true),
+
+    /**
+     * Return a promise which will resolve if the provider has
+     * already been opened.
+     *
+     * @method fetch
+     * @param {String} providerName The provider to open
+     * @return {Ember.RSVP.Promise} Promise resolving to an authentication object
+     */
+    fetch:  proxyToProvider('fetch'),
+
+    /**
+     * Return a promise which will resolve when the provider has been
+     * closed. Closing a provider may not always be a meaningful action,
+     * and may be better handled by torii's session management instead.
+     *
+     * @method close
+     * @param {String} providerName The provider to open
+     * @return {Ember.RSVP.Promise} Promise resolving when the provider is closed
+     */
+    close:  proxyToProvider('close')
+  });
+
+  exports['default'] = Torii;
 
 });
 ;/* jshint ignore:start */

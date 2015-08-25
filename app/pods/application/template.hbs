@@ -16,6 +16,18 @@
             <li>{{#link-to 'themes'}}Themes{{/link-to}}</li>
             <li>{{#link-to 'books'}}Books{{/link-to}}</li>
             <li>{{#link-to 'elements'}}Elements{{/link-to}}</li>
+            <li>{{#if session.isWorking}}
+  One sec while we get you signed in...
+{{else}}
+  {{error}}
+  {{#if hasGithub}}
+  <p>logout</p>
+  {{else}}
+  <button {{action 'signInViaGithub'}}>
+    Sign In
+  </button>
+  {{/if}}
+{{/if}}</li>
 
 <!--
             <li class="dropdown">
@@ -38,7 +50,7 @@
         </div><!--/.nav-collapse -->
       </div>
     </nav>
-      
+
       {{outlet}}
 <footer class="footer">
       <div class="container">
