@@ -36,7 +36,7 @@
     </tr>
   </thead>
   <tbody>
-{{#each element in sortedList}}
+{{#each sortedList as |element|}}
     <tr>
       <td>
 {{#link-to 'element' element}}{{element.name}}{{/link-to}}</td>
